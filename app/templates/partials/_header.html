@@ -1,0 +1,39 @@
+<header>
+    <div class="container">
+        <nav class="glass">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 48 48" fill="white" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="16" cy="16" r="5" opacity="0.9"/>
+                        <circle cx="32" cy="16" r="4" opacity="0.8"/>
+                        <circle cx="16" cy="32" r="4" opacity="0.7"/>
+                        <circle cx="32" cy="32" r="5" opacity="0.85"/>
+                        <circle cx="24" cy="8" r="2" opacity="1"/>
+                        <circle cx="8" cy="24" r="2" opacity="0.9"/>
+                        <circle cx="40" cy="24" r="2" opacity="0.9"/>
+                        <circle cx="24" cy="40" r="2" opacity="1"/>
+                        <circle cx="8" cy="8" r="1" opacity="0.6"/>
+                        <circle cx="40" cy="8" r="1" opacity="0.6"/>
+                        <circle cx="8" cy="40" r="1" opacity="0.6"/>
+                        <circle cx="40" cy="40" r="1" opacity="0.6"/>
+                    </svg>
+                </div>
+                <span>SyntaxSnacks</span>
+            </div>
+            <div class="nav-links">
+                <a href="{{ url_for('main.dashboard') }}">Home</a>
+                {% if current_user.is_authenticated %}
+                    <span class="user-info">Hi {{ current_user.username }} – Streak {{ current_user.streak }}</span>
+                    <a href="{{ url_for('main.profile') }}">Settings</a>
+                    <a href="{{ url_for('auth.logout') }}">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}">Login</a>
+                    <a href="{{ url_for('auth.signup') }}">Sign Up</a>
+                {% endif %}
+            </div>
+        </nav>
+        {% if current_user.is_authenticated %}
+        <div class="user-langs">Your languages: {{ current_user.preferred_languages }}</div>
+        {% endif %}
+    </div>
+</header>

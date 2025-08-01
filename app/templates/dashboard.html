@@ -1,33 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Dashboard – SyntaxSnacks{% endblock %}
 {% block content %}
-  <h1>Today's SyntaxSnack</h1>
-
-  {% if user %}
-    <p>Streak: {{ user.streak }} day(s)</p>
-    <p>Preferred languages: {{ user.preferred_languages }}</p>
-  {% endif %}
-
-  {% if challenge %}
-    <div class="challenge-card">
-      <h2>{{ challenge.title }} ({{ challenge.language }})</h2>
-      <p>{{ challenge.prompt }}</p>
-      <div>
-        <button onclick="document.getElementById('hint').style.display='block'">Show Hint</button>
-        <div id="hint" style="display:none;">
-          {% for h in challenge.get_hints() %}
-            <p>• {{ h }}</p>
-          {% endfor %}
-        </div>
-      </div>
-      <form method="POST" action="{{ url_for('main.complete', challenge_id=challenge.id) }}">
-        <button type="submit">Mark as Solved</button>
-      </form>
-      {% if challenge.reference_url %}
-        <p>Learn more: <a href="{{ challenge.reference_url }}" target="_blank">Reference</a></p>
-      {% endif %}
-    </div>
-  {% else %}
-    <p>No new challenges available. Check back tomorrow or contribute more content.</p>
-  {% endif %}
+<h1>Today's SyntaxSnack</h1>
+{% include 'partials/_challenge_card.html' %}
 {% endblock %}

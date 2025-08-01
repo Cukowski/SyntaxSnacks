@@ -1,15 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Sign Up – SyntaxSnacks{% endblock %}
 {% block content %}
-  <h2>Create Account</h2>
-  <form method="POST" action="{{ url_for('auth.signup') }}">
-    <label>Username</label>
-    <input name="username" required />
-    <label>Password</label>
-    <input type="password" name="password" required />
-    <label>Preferred Languages (comma-separated)</label>
-    <input name="languages" placeholder="Python,JavaScript" />
-    <button type="submit">Sign Up</button>
-  </form>
-  <p>Already have one? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+<div class="auth-form glass">
+    <h2>Create Account</h2>
+    <form method="POST" action="{{ url_for('auth.signup') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input id="username" name="username" required />
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required />
+        </div>
+        <div class="form-group">
+            <label for="languages">Preferred Languages (comma-separated)</label>
+            <input id="languages" name="languages" placeholder="Python,JavaScript" />
+        </div>
+        <button type="submit" class="cta-button">Sign Up</button>
+    </form>
+    <p>Already have one? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+</div>
 {% endblock %}
