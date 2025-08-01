@@ -39,10 +39,15 @@ syntaxsnacks/
 │   ├── utils.py
 │   └── templates/
 │       ├── base.html
+│       ├── home.html
 │       ├── login.html
 │       ├── signup.html
 │       ├── dashboard.html
-│       └── profile.html
+│       ├── profile.html
+│       └── partials/
+│           ├── _header.html
+│           ├── _footer.html
+│           └── _challenge_card.html
 ├── static/                  # Glossy Touch assets (css/, js/, images/)
 ├── seed.py                  # helper to seed initial challenges/jokes
 └── README.md
@@ -51,10 +56,11 @@ syntaxsnacks/
 
 ## 🏗️ Current Status
 
-✅ Basic backend (Python / Flask) with authentication and session management  
-✅ Simple frontend (HTML / CSS / vanilla JS, based on Glossy Touch)  
-✅ Challenge engine with language preferences  
-✅ Progress tracking (streaks, solved)  
+✅ Basic backend (Python / Flask) with authentication and session management
+✅ Glossy Touch-inspired UI with modular Jinja templates
+✅ Visitor-friendly landing page for guests
+✅ Challenge engine with language preferences
+✅ Progress tracking (streaks, solved)
 🔜 LLM-assisted content pipeline (human-reviewed)  
 🔜 Desktop/PWA packaging and deeper personalization  
 🔜 Admin / content moderation tools  
@@ -130,7 +136,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📚 License
 
-MIT — do whatever you want, just don’t remove the cookies.
+MIT — do whatever you want, just don’t remove the cookies. See
+[LICENSE](LICENSE) for the full text.
 
 ---
 
