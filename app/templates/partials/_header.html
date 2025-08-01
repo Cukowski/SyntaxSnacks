@@ -21,7 +21,7 @@
                 <span>SyntaxSnacks</span>
             </div>
             <div class="nav-links">
-                <a href="{{ url_for('main.dashboard') }}">Home</a>
+                <a href="{{ url_for('main.dashboard') if current_user.is_authenticated else url_for('main.index') }}">Home</a>
                 {% if current_user.is_authenticated %}
                     <span class="user-info">Hi {{ current_user.username }} – Streak {{ current_user.streak }}</span>
                     <a href="{{ url_for('main.profile') }}">Settings</a>

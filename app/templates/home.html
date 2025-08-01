@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Welcome – SyntaxSnacks{% endblock %}
+{% block content %}
+<section class="hero glass">
+    <div class="hero-image">
+        <img src="{{ url_for('static', filename='images/templatemo-futuristic-girl.jpg') }}" alt="Programming illustration" />
+    </div>
+    <div class="hero-content">
+        <h1>Sharpen Your Skills</h1>
+        <p>Daily bite-sized challenges help you practice consistently. Sign up and start solving!</p>
+        <a href="{{ url_for('auth.signup') }}" class="cta-button">Get Started</a>
+    </div>
+</section>
+
+<section class="features">
+    <div class="feature-card glass">
+        <div class="feature-icon">🧩</div>
+        <h3>Daily Challenges</h3>
+        <p>Short exercises across multiple languages.</p>
+    </div>
+    <div class="feature-card glass">
+        <div class="feature-icon">📊</div>
+        <h3>Track Progress</h3>
+        <p>Build a streak and watch your skills grow.</p>
+    </div>
+    <div class="feature-card glass">
+        <div class="feature-icon">🎯</div>
+        <h3>Choose Languages</h3>
+        <p>Practice Python, JavaScript, C++, and more.</p>
+    </div>
+</section>
+{% endblock %}
