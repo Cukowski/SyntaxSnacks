@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
-from ..models import Challenge, UserProgress, db
+from sqlalchemy.sql import func
+from ..models import Challenge, Snack, UserProgress, db
 from ..utils import select_daily_challenge_for
 
 main_bp = Blueprint("main", __name__)
@@ -9,8 +10,14 @@ main_bp = Blueprint("main", __name__)
 def index():
     if current_user.is_authenticated:
         return redirect(url_for("main.dashboard"))
-    # show marketing home page for visitors
-    return render_template("home.html")
+    # show marketing home page for visitors along with random content
+    challenge = Challenge.query.order_by(func.random()).first()
+    snacks = {
+        "hint": Snack.query.filter_by(category="hint", approved=True).order_by(func.random()).first(),
+        "joke": Snack.query.filter_by(category="joke", approved=True).order_by(func.random()).first(),
+        "fact": Snack.query.filter_by(category="fact", approved=True).order_by(func.random()).first(),
+    }
+    return render_template("home.html", challenge=challenge, snacks=snacks)
 
 @main_bp.route("/dashboard")
 @login_required

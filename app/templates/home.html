@@ -29,4 +29,35 @@
         <p>Practice Python, JavaScript, C++, and more.</p>
     </div>
 </section>
+
+<section class="snacks">
+    {% if challenge %}
+    <div class="snack glass">
+        <h3>Today's Challenge</h3>
+        <strong>{{ challenge.title }}</strong>
+        <p>{{ challenge.prompt }}</p>
+    </div>
+    {% endif %}
+
+    {% if snacks.hint %}
+    <div class="snack glass">
+        <h3>Hint</h3>
+        <p>{{ snacks.hint.text }}</p>
+    </div>
+    {% endif %}
+
+    {% if snacks.joke %}
+    <div class="snack glass">
+        <h3>Joke</h3>
+        <p>{{ snacks.joke.text }}</p>
+    </div>
+    {% endif %}
+
+    {% if snacks.fact %}
+    <div class="snack glass">
+        <h3>Quick Fact</h3>
+        <p>{{ snacks.fact.text }}</p>
+    </div>
+    {% endif %}
+</section>
 {% endblock %}

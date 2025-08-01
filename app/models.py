@@ -46,3 +46,17 @@ class UserProgress(db.Model):
 
     user = db.relationship("User", backref="progress")
     challenge = db.relationship("Challenge")
+
+
+class Snack(db.Model):
+    """Simple content pool for hints, jokes and quick facts."""
+
+    __tablename__ = "snacks"
+
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(40), nullable=False)  # hint, joke, fact
+    text = db.Column(db.Text, nullable=False)
+    is_llm = db.Column(db.Boolean, default=False)
+    approved = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
