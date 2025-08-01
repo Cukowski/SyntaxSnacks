@@ -9,7 +9,8 @@ main_bp = Blueprint("main", __name__)
 def index():
     if current_user.is_authenticated:
         return redirect(url_for("main.dashboard"))
-    return render_template("dashboard.html", user=None, challenge=None)
+    # show marketing home page for visitors
+    return render_template("home.html")
 
 @main_bp.route("/dashboard")
 @login_required
