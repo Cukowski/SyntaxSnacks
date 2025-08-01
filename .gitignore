@@ -1,0 +1,25 @@
+# Python stuff
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+
+# Virtualenv
+venv/
+env/
+
+# Environment config
+.env
+
+# SQLite / instance runtime data
+instance/
+# or more specifically:
+# instance/syntaxsnacks.sqlite
+
+# IDE / OS cruft
+.vscode/
+*.swp
+.DS_Store
+
+# Logs
+*.log
