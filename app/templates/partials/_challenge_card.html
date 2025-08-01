@@ -1,0 +1,21 @@
+{% if challenge %}
+<section class="challenge-card glass">
+    <h2>{{ challenge.title }} <small>({{ challenge.language }})</small></h2>
+    <p>{{ challenge.prompt }}</p>
+    <button class="cta-button" type="button" onclick="document.getElementById('hint').classList.toggle('show')">Show Hint</button>
+    <div id="hint" class="hint" style="display:none;" onclick="this.style.display='none'">
+        {% for h in challenge.get_hints() %}
+        <p>• {{ h }}</p>
+        {% endfor %}
+    </div>
+    {% if challenge.reference_url %}
+    <p>Learn more: <a href="{{ challenge.reference_url }}" target="_blank">Reference</a></p>
+    {% endif %}
+    <form method="POST" action="{{ url_for('main.complete', challenge_id=challenge.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="cta-button">Mark as Solved</button>
+    </form>
+</section>
+{% else %}
+<p>No new challenges available. Check back tomorrow or contribute more content.</p>
+{% endif %}

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for
+from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from ..models import Challenge, UserProgress, db
 from ..utils import select_daily_challenge_for
@@ -33,7 +33,13 @@ def complete(challenge_id):
     # Optionally update streak if this is first solve today
     return redirect(url_for("main.dashboard"))
 
-@main_bp.route("/profile")
+@main_bp.route("/profile", methods=["GET", "POST"])
 @login_required
 def profile():
+    if request.method == "POST":
+        langs = request.form.get("languages", "")
+        current_user.preferred_languages = langs
+        db.session.commit()
+        flash("Preferences updated.", "success")
+        return redirect(url_for("main.profile"))
     return render_template("profile.html", user=current_user)

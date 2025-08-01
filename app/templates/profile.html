@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Settings – SyntaxSnacks{% endblock %}
+{% block content %}
+<div class="settings-form glass">
+    <h2>Update Preferences</h2>
+    <form method="POST" action="{{ url_for('main.profile') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+            <label for="languages">Preferred Languages (comma-separated)</label>
+            <input id="languages" name="languages" value="{{ user.preferred_languages }}" />
+        </div>
+        <button type="submit" class="cta-button">Save</button>
+    </form>
+</div>
+{% endblock %}
