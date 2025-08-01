@@ -9,7 +9,8 @@ Whether you're brushing up on Python, diving into C++, or just want a small chal
 A lightweight web and desktop-friendly app that gives you:
 
 - 🧩 **1–2 Daily Programming Challenges** (beginner to intermediate)  
-- 💬 **Hints, jokes, and quick facts** to keep it engaging  
+- 💬 **Hints, jokes, and quick facts** to keep it engaging
+- 🎉 **Random daily snacks** on the homepage
 - 🛠️ Support for **Python, C++, JavaScript, Java, and C#** (more to come)  
 - 📊 **Progress tracking** and personalized language preferences  
 - 🤖 Future-proof with optional **LLM-generated content** (human-reviewed)  

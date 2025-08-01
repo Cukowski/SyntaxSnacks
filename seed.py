@@ -1,5 +1,5 @@
 from app import create_app
-from app.models import db, Challenge, User, UserProgress
+from app.models import db, Challenge, Snack, User, UserProgress
 import json
 
 app = create_app()
@@ -29,3 +29,11 @@ with app.app_context():
     db.session.add_all([c1, c2])
     db.session.commit()
     print("Seeded challenges.")
+
+    # sample snacks
+    s1 = Snack(category="hint", text="Remember to keep functions small and focused.")
+    s2 = Snack(category="joke", text="Why do programmers prefer dark mode? Because light attracts bugs!")
+    s3 = Snack(category="fact", text="Python was named after Monty Python, not the snake.")
+    db.session.add_all([s1, s2, s3])
+    db.session.commit()
+    print("Seeded snacks.")
