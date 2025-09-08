@@ -1,0 +1,12 @@
+{% extends 'base.html' %}{% block content %}
+<div class="glass" style="position:relative; z-index: 1001;">
+  <h2>Create account</h2>
+  <form method="post" action="{{ url_for('signup') }}">
+    <label>Username</label><input name="username" required autocomplete="username">
+    <label>Email</label><input name="email" type="email" autocomplete="email">
+    <label>Password</label><input name="password" type="password" required autocomplete="new-password">
+    <label>Confirm Password</label><input name="confirm" type="password" required autocomplete="new-password">
+    <p style="margin-top:12px"><button type="submit" class="btn-primary">Sign up</button></p>
+  </form>
+</div>
+{% endblock %}

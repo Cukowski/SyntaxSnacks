@@ -1,0 +1,14 @@
+{% extends 'base.html' %}{% block content %}
+<div class="glass"><h2>Leaderboard</h2>
+<table class="table">
+  <tr><th>#</th><th>User</th><th>XP</th><th>Streak</th></tr>
+  {% for u in users %}
+    <tr class="row">
+      <td>{{ loop.index }}</td>
+      <td>{{ u.username }}</td>
+      <td>{{ u.xp }}</td>
+      <td>{{ u.streak }}</td>
+    </tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

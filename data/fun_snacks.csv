@@ -1,0 +1,51 @@
+type,text
+joke,My C# project started simple—now it's a framework about frameworks.
+joke,I tried to optimize gRPC; now it's fast and wrong.
+fact,Interpreters: automated tests reduce fear of refactoring and speed up iteration.
+joke,The only thing worse than merge conflicts is calendar conflicts.
+joke,"In Deno, the real bug is always in the 'just one more change'."
+joke,Yesterday I learned REST. Today I'm a senior REST developer. (According to my resume.)
+joke,Git commit messages are like emails to your future self—write them before Future You becomes your worst code reviewer.
+fact,React: clear naming and small functions improve readability and maintainability.
+joke,I tried to center a div. Send thoughts and prayers.
+fact,C#: automated tests reduce fear of refactoring and speed up iteration.
+joke,Why do compilers love coffee? They constantly Java.
+joke,My JavaScript project started simple—now it's a framework about frameworks.
+joke,"In C#, the real bug is always in the 'just one more change'."
+fact,gRPC: good logging and metrics make debugging dramatically faster in production.
+fact,GCP: automated tests reduce fear of refactoring and speed up iteration.
+joke,My Security project started simple—now it's a framework about frameworks.
+joke,"A CSS developer walks into a bar. The bartender says, 'We don't serve your type.'"
+joke,Yesterday I learned DevOps. Today I'm a senior DevOps developer. (According to my resume.)
+joke,Yesterday I learned Deno. Today I'm a senior Deno developer. (According to my resume.)
+joke,I opened task manager. It said 'same'.
+joke,"A SQL query walks into a bar, walks out of a bar, walks into a bar... it had a JOIN problem."
+fact,Backups are not the same as disaster recovery; restoration needs to be tested regularly.
+fact,"Networking: using version control best practices (small commits, good messages) aids collaboration."
+fact,Monoliths: good logging and metrics make debugging dramatically faster in production.
+fact,A mutex provides mutual exclusion; a semaphore can control access for multiple threads.
+fact,Docker packages applications and dependencies into containers for consistent environments.
+joke,I told HR I needed a new chair. They said to try microservices.
+joke,I tried to optimize Haskell; now it's fast and wrong.
+fact,NLP: good logging and metrics make debugging dramatically faster in production.
+fact,Haskell: clear naming and small functions improve readability and maintainability.
+fact,"Microservices: using version control best practices (small commits, good messages) aids collaboration."
+joke,I tried to optimize HTML/CSS; now it's fast and wrong.
+joke,"If at first you don't cache, try, try again."
+joke,"In Compilers, the real bug is always in the 'just one more change'."
+joke,Yesterday I learned Docker. Today I'm a senior Docker developer. (According to my resume.)
+fact,PHP: clear naming and small functions improve readability and maintainability.
+joke,Yesterday I learned Rust. Today I'm a senior Rust developer. (According to my resume.)
+fact,Cloud: good logging and metrics make debugging dramatically faster in production.
+fact,Ruby: clear naming and small functions improve readability and maintainability.
+joke,I tried to optimize Databases; now it's fast and wrong.
+fact,WebAssembly lets code written in languages like C/C++/Rust run in the browser at near-native speed.
+joke,Hardware: the part you can kick. Software: the part you only wish you could.
+fact,Interpreters: clear naming and small functions improve readability and maintainability.
+fact,Regex: clear naming and small functions improve readability and maintainability.
+joke,Why did the programmer quit his job? Because he didn't get arrays.
+joke,My Deno project started simple—now it's a framework about frameworks.
+fact,DevOps: clear naming and small functions improve readability and maintainability.
+joke,Yesterday I learned C. Today I'm a senior C developer. (According to my resume.)
+joke,I told my code to behave. It threw exceptions.
+fact,Regex: automated tests reduce fear of refactoring and speed up iteration.

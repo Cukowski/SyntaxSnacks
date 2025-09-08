@@ -1,0 +1,14 @@
+{% extends 'base.html' %}{% block content %}
+<div class="glass"><h2>Add New Challenge</h2>
+<form method="post">
+  <label>Title</label><input name="title" required>
+  <label>Language</label><input name="language" placeholder="Python / JS / General">
+  <label>Difficulty</label>
+  <select name="difficulty"><option>Easy</option><option>Medium</option><option>Hard</option></select>
+  <label>Topic/Tags</label><input name="topic" placeholder="strings, loops">
+  <label>Prompt</label><textarea name="prompt" rows="6" required></textarea>
+  <label>Hints</label><textarea name="hints" rows="3"></textarea>
+  <label>Solution</label><textarea name="solution" rows="6"></textarea>
+  <p style="margin-top:12px"><button class="btn-primary">Create</button></p>
+</form></div>
+{% endblock %}

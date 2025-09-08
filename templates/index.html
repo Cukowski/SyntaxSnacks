@@ -1,0 +1,26 @@
+{% extends 'base.html' %}{% block content %}
+<section class="hero">
+  <div class="glass">
+    <h1>Daily bite-sized coding challenges.</h1>
+    <p>Build a consistent habit with short, fun problems. Earn XP, keep a streak, and track your growth.</p>
+    <div class="stats"><div class="stat">✨ Bite-sized</div><div class="stat">🔥 Streaks</div><div class="stat">⭐ XP</div></div>
+    <p style="margin-top:12px">
+      {% if not current_user.is_authenticated %}<a class="btn-primary" href="{{ url_for('signup') }}">Get Started</a>
+      {% else %}<a class="btn-primary" href="{{ url_for('dashboard') }}">Go to Dashboard</a>{% endif %}
+    </p>
+    <div class="fun-card" style="margin-top:14px">
+      <strong id="fun-type">{{ fun.type|title }}</strong>: <span id="fun-text">{{ fun.text }}</span>
+      <div><button onclick="refreshFun()" style="margin-top:8px">Show another</button></div>
+    </div>
+  </div>
+  <div class="glass"><img src="{{ url_for('static', filename='images/hero.jpg') }}" alt="hero"></div>
+</section>
+<script>
+function refreshFun(){
+  fetch('{{ url_for("api_fun") }}').then(r=>r.json()).then(d=>{
+    document.getElementById('fun-text').textContent = d.text;
+    document.getElementById('fun-type').textContent = (d.type||'Fun').charAt(0).toUpperCase()+ (d.type||'').slice(1);
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}{% block content %}
+<div class="glass">
+  <h2>Welcome, {{ current_user.username }}!</h2>
+  <div class="stats" style="margin:8px 0 16px">
+    <div class="stat">🔥 Streak: <strong>{{ current_user.streak }}</strong></div>
+    <div class="stat">⭐ XP: <strong>{{ current_user.xp }}</strong></div>
+  </div>
+  {% if challenge %}
+    <h3>Today's Snack: {{ challenge.title }}</h3>
+    <p style="white-space: pre-wrap">{{ challenge.prompt }}</p>
+    {% if challenge.hints %}<button onclick="toggle('hint')" class="btn-primary">Show Hint</button>
+    <div id="hint" style="display:none;margin-top:10px" class="card"><strong>Hint:</strong><br>{{ challenge.hints }}</div>{% endif %}
+    {% if challenge.solution %}<button onclick="toggle('solution')" style="margin-left:6px">Reveal Solution</button>
+    <div id="solution" style="display:none;margin-top:10px" class="card"><strong>Solution:</strong><pre style="white-space: pre-wrap">{{ challenge.solution }}</pre></div>{% endif %}
+    <form method="post" action="{{ url_for('submit_challenge', challenge_id=challenge.id) }}" style="margin-top:12px">
+      <button type="submit" class="btn-primary">Mark as Solved (+10 XP)</button>
+    </form>
+  {% else %}
+    <p>No more challenges for now. Check back soon!</p>
+  {% endif %}
+  {% if joke %}<div class="card joke" style="margin-top:14px">💡 {{ joke }}</div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'base.html' %}{% block content %}
+<div class="glass" style="position:relative; z-index: 2000; margin-top: 10px;">
+  <h2>Login</h2>
+  <form id="login-form" method="post" action="{{ url_for('login') }}" onsubmit="event.stopPropagation();">
+    <label>Username</label><input name="username" required autocomplete="username">
+    <label>Password</label><input name="password" type="password" required autocomplete="current-password">
+    <p style="margin-top:12px">
+      <button id="login-btn" type="submit" class="btn-primary">Login</button>
+    </p>
+    <p>New here? <a href="{{ url_for('signup') }}">Create an account</a>.</p>
+  </form>
+</div>
+<script>
+  // Belt-and-suspenders: force submission and stop any bubbling that might hit the navbar
+  (function(){
+    const btn = document.getElementById('login-btn');
+    const form = document.getElementById('login-form');
+    btn.addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      form.submit();
+    });
+  })();
+</script>
+{% endblock %}

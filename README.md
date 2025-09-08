@@ -1,146 +1,293 @@
-# 🧠 SyntaxSnacks  
-*Snack-sized code challenges to sharpen your skills—one bite at a time.*
+# SyntaxSnacks — Daily Programming Practice (Flask)
 
-**SyntaxSnacks** is a free, open-source platform for daily programming practice, designed to make learning fun, fast, and consistent.  
-Whether you're brushing up on Python, diving into C++, or just want a small challenge with your morning coffee—this is your daily dose of code.
+A small, good-looking web app for bite-sized coding challenges. Users earn XP and streaks, view a leaderboard, and (as admin) add or bulk-import challenges. The Home page shows a public “Did you know? / Today’s joke” pulled from a CSV.
 
-## 🍪 What is SyntaxSnacks?
-
-A lightweight web and desktop-friendly app that gives you:
-
-- 🧩 **1–2 Daily Programming Challenges** (beginner to intermediate)  
-- 💬 **Hints, jokes, and quick facts** to keep it engaging
-- 🎉 **Random daily snacks** on the homepage
-- 🛠️ Support for **Python, C++, JavaScript, Java, and C#** (more to come)  
-- 📊 **Progress tracking** and personalized language preferences  
-- 🤖 Future-proof with optional **LLM-generated content** (human-reviewed)  
-- 🌐 Mobile-ready UI + optional desktop/PWA version  
-- 🌱 Fully **open-source, ad-free**, and easy to host or contribute to  
-
-## 📁 Repository Layout
-
-```
-
-syntaxsnacks/
-├── .env.example
-├── requirements.txt
-├── manage.py
-├── config.py
-├── instance/
-│   └── syntaxsnacks.sqlite   # (created at runtime)
-├── app/
-│   ├── __init__.py
-│   ├── models.py
-│   ├── auth/
-│   │   ├── __init__.py
-│   │   └── routes.py
-│   ├── main/
-│   │   ├── __init__.py
-│   │   └── routes.py
-│   ├── utils.py
-│   └── templates/
-│       ├── base.html
-│       ├── home.html
-│       ├── login.html
-│       ├── signup.html
-│       ├── dashboard.html
-│       ├── profile.html
-│       └── partials/
-│           ├── _header.html
-│           ├── _footer.html
-│           └── _challenge_card.html
-├── static/                  # Glossy Touch assets (css/, js/, images/)
-├── seed.py                  # helper to seed initial challenges/jokes
-└── README.md
-
-```
-
-## 🏗️ Current Status
-
-✅ Basic backend (Python / Flask) with authentication and session management
-✅ Glossy Touch-inspired UI with modular Jinja templates
-✅ Visitor-friendly landing page for guests
-✅ Challenge engine with language preferences
-✅ Progress tracking (streaks, solved)
-🔜 LLM-assisted content pipeline (human-reviewed)  
-🔜 Desktop/PWA packaging and deeper personalization  
-🔜 Admin / content moderation tools  
-
-## 📦 Tech Stack
-
-- Backend: **Python (Flask)**  
-- Frontend: **HTML, CSS, JavaScript** (no heavy frameworks)  
-- Database: **SQLite** (easy to swap out)  
-- Optional: **Open-source LLMs** (e.g., via `llama.cpp`) for content generation  
-- Deployment: Self-hosted or low-cost VPS (e.g., Gunicorn + Nginx), custom domain `syntaxsnacks.site`  
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Python 3.10+  
-- Git  
-
-### Setup
-
-```bash
-git clone https://github.com/cukowski/syntaxsnacks.git
-cd syntaxsnacks
-````
-
-Copy and customize environment:
-
-```bash
-cp .env.example .env
-# edit .env: set a strong SECRET_KEY before running
-```
-
-Create and activate virtual environment:
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-Seed initial content:
-
-```bash
-python seed.py
-```
-
-Run development server:
-
-```bash
-python manage.py
-```
-
-Open in browser: `http://localhost:5000`
-
-## 🧠 Features to Contribute To
-
-* Add new snack-sized challenges (multi-language)
-* Improve UI/UX and responsiveness
-* Enhance personalization / adaptive difficulty
-* Build LLM-assisted draft content generation with approval workflow
-* Extend to more languages or embed interactive execution
-* Help with deployment, PWA support, or analytics
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## 🔒 Security Notes
-
-* Passwords are hashed; no plaintext storage
-* CSRF protection is enabled (via Flask-WTF or tokens)
-* Session cookies are HTTP-only with sane defaults; production should enforce HTTPS
-* Input is handled through SQLAlchemy to avoid injection risks
-
-## 📚 License
-
-MIT — do whatever you want, just don’t remove the cookies. See
-[LICENSE](LICENSE) for the full text.
+> Tech: **Flask**, **Flask-Login**, **Flask-SQLAlchemy**, **SQLite** (default), **Jinja2**, **Gunicorn** (cloud)
 
 ---
 
-### Made with ☕, 💡, and a bit of `while(fun)`.
+## Table of Contents
+
+* [Features](#features)
+* [Screens & Routes](#screens--routes)
+* [Quick Start (Local)](#quick-start-local)
+* [Configuration](#configuration)
+* [Folder Structure](#folder-structure)
+* [Data Model](#data-model)
+* [Admin & Seeding](#admin--seeding)
+* [Challenges: Bulk CSV Import](#challenges-bulk-csv-import)
+* [Home CSV (Fun Facts / Jokes)](#home-csv-fun-facts--jokes)
+* [API](#api)
+* [Deploying to the Cloud](#deploying-to-the-cloud)
+* [Customization](#customization)
+* [Roadmap / Next Steps](#roadmap--next-steps)
+* [License](#license)
+
+---
+
+## Features
+
+* 🔐 **Auth** — Sign up, login, logout (Flask-Login).
+* 🧠 **Daily Challenge Flow** — Shows the next unsolved challenge.
+* ⭐ **Gamification** — “Mark as solved (+10 XP)” updates XP & streak logic.
+* 🏆 **Leaderboard** — Sorted by XP, then streak.
+* 🛠️ **Admin** — Add single challenge or **bulk-import via CSV**.
+* 🎉 **Home “Did you know? / Today’s joke”** — Random item from CSV; “Show another” via `/api/fun`.
+* 📬 **Contact** — Success message scoped to the page (no global flash leaks).
+* 💅 **Nice UI** — Glassmorphism styling with a minimal theme; mobile-friendly.
+
+---
+
+## Screens & Routes
+
+| Page                 | Route                           | Notes                                                           |
+| -------------------- | ------------------------------- | --------------------------------------------------------------- |
+| Home                 | `/`                             | Public; shows random fun fact/joke from CSV                     |
+| About                | `/about`                        | Public                                                          |
+| Contact              | `/contact`                      | Public; POST redirects to `/contact?sent=1`                     |
+| Sign up              | `/signup`                       | Public                                                          |
+| Login                | `/login`                        | Public                                                          |
+| Dashboard            | `/dashboard`                    | Requires login; daily challenge, hint, solution, mark-as-solved |
+| Leaderboard          | `/leaderboard`                  | Public                                                          |
+| Admin: New Challenge | `/admin/challenge/new`          | Requires admin                                                  |
+| Admin: Import CSV    | `/admin/challenges/import`      | Requires admin                                                  |
+| Admin: CSV Example   | `/admin/challenges/example.csv` | Download sample                                                 |
+| API: Fun Item        | `/api/fun`                      | Returns `{type, text}` JSON                                     |
+
+---
+
+## Quick Start (Local)
+
+### 1) Clone & create a virtualenv
+
+```bash
+python -m venv .venv
+# Linux/macOS
+source .venv/bin/activate
+# Windows PowerShell
+# .venv\Scripts\Activate.ps1
+```
+
+### 2) Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3) Configure environment
+
+```bash
+cp .env.example .env
+# then edit .env to set a strong FLASK_SECRET_KEY
+```
+
+### 4) Run
+
+```bash
+python app.py
+# http://localhost:5000
+```
+
+> On first run, the app seeds an **admin** user and a starter challenge.
+
+---
+
+## Configuration
+
+Environment variables (via `.env`):
+
+| Key                | Default            | Description                            |
+| ------------------ | ------------------ | -------------------------------------- |
+| `FLASK_SECRET_KEY` | `dev-secret`       | Set a strong secret in production      |
+| `DATABASE_URL`     | `sqlite:///app.db` | SQLAlchemy URL (Postgres, MySQL, etc.) |
+
+Examples:
+
+```
+# SQLite (default)
+DATABASE_URL=sqlite:///app.db
+
+# Postgres
+DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/dbname
+```
+
+---
+
+## Folder Structure
+
+```
+.
+├── app.py
+├── requirements.txt
+├── Procfile
+├── .env.example
+├── data/
+│   └── fun_snacks.csv           # public facts/jokes CSV
+├── static/
+│   ├── css/
+│   │   ├── templatemo-glossy-touch.css
+│   │   └── custom.css           # project styles (edit me)
+│   ├── images/
+│   │   ├── logo.png
+│   │   └── hero.jpg
+│   └── js/
+│       └── templatemo-glossy-touch.js
+└── templates/
+    ├── base.html
+    ├── index.html
+    ├── about.html
+    ├── contact.html
+    ├── login.html
+    ├── signup.html
+    ├── dashboard.html
+    ├── leaderboard.html
+    ├── admin_add_challenge.html
+    └── admin_import_challenges.html
+```
+
+---
+
+## Data Model
+
+**User**
+
+* `id`, `username` (unique), `email` (unique), `password_hash`
+* `xp` (int), `streak` (int), `last_active_date` (date)
+* `is_admin` (bool)
+
+**Challenge**
+
+* `id`, `title`, `prompt`, `solution`, `hints`
+* `language`, `difficulty`, `topic`
+* `added_by` (User.id)
+
+**Submission**
+
+* `id`, `user_id`, `challenge_id`, `timestamp`
+
+**Joke**
+
+* `id`, `text`
+
+---
+
+## Admin & Seeding
+
+On the first run the app seeds:
+
+* **Admin user** — `username=admin`, `password=admin123`
+* One starter challenge and one starter joke.
+
+To change the admin password later:
+
+```python
+from app import app, db, User
+from werkzeug.security import generate_password_hash
+with app.app_context():
+    u = User.query.filter_by(username="admin").first()
+    u.password_hash = generate_password_hash("NEW_PASSWORD")
+    db.session.commit()
+```
+
+---
+
+## Challenges: Bulk CSV Import
+
+**Route:** `/admin/challenges/import` (admin only)
+
+**Accepted CSV headers:**
+
+```
+title,prompt,solution,hints,language,difficulty,topic
+```
+
+**Notes**
+
+* `title` and `prompt` are required; others are optional.
+* Encoding: UTF-8 (BOM accepted).
+* Try the sample: `/admin/challenges/example.csv`.
+
+---
+
+## Home CSV (Fun Facts / Jokes)
+
+**File:** `data/fun_snacks.csv`
+
+**Headers:**
+
+```
+type,text
+```
+
+**Example rows:**
+
+```
+joke,Why do programmers prefer dark mode? Because light attracts bugs.
+fact,Python was named after 'Monty Python', not the snake.
+joke,A SQL query walks into a bar and asks: 'Can I join you?'
+```
+
+The Home page shows a random row and a **Show another** button that calls the `/api/fun` endpoint.
+
+---
+
+## API
+
+### `GET /api/fun`
+
+Returns a random fun item from `data/fun_snacks.csv`.
+
+**Response**
+
+```json
+{ "type": "joke", "text": "There are 10 kinds of people..." }
+```
+
+---
+
+## Deploying to the Cloud
+
+The repo includes a `Procfile`:
+
+```
+web: gunicorn app:app
+```
+
+**General steps (Render/Railway/Fly/Heroku-like):**
+
+1. Set environment variables:
+
+   * `FLASK_SECRET_KEY`
+   * `DATABASE_URL` (use a managed Postgres in production)
+2. Use the `web` process: `gunicorn app:app`
+3. Ensure `python-version` and `build` step install `requirements.txt`.
+
+**Static files** are served by Flask; for high traffic consider a CDN.
+
+---
+
+## Customization
+
+* **Theme/Styling:** Edit `static/css/custom.css`.
+* **Nav & layout:** Edit `templates/base.html`.
+* **Home Fun Section:** `templates/index.html` + `data/fun_snacks.csv`.
+* **Gamification Rules:** See `update_streak_and_xp()` in `app.py`.
+* **Daily Logic:** `get_daily_challenge_for_user()` currently returns the first unsolved challenge; swap for schedule/rotation when ready.
+
+---
+
+## Roadmap / Next Steps
+
+* ✏️ **Answer box / sandbox** on Dashboard (capture notes/solutions; optional code run in a safe service later).
+* 🧑‍🤝‍🧑 **Community** (comments, reactions, challenge voting).
+* 🧩 **Categories & filters** on challenges.
+* 🤖 **LLM assist** (hint generation, explanation, solution review).
+* 📊 **Analytics** (daily/weekly engagement, cohort stats).
+* 🐳 **Docker** & **CI/CD**.
+
+---
+
+## License
+
+MIT (or your preferred license). Replace this line with the one you use in your repo.
 

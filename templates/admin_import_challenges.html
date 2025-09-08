@@ -1,0 +1,11 @@
+{% extends 'base.html' %}{% block content %}
+<div class="glass">
+  <h2>Bulk Import Challenges (CSV)</h2>
+  <p>Headers: <code>title,prompt,solution,hints,language,difficulty,topic</code></p>
+  <form method="post" enctype="multipart/form-data" action="{{ url_for('admin_import_challenges') }}">
+    <input type="file" name="file" accept=".csv" required>
+    <button type="submit" class="btn-primary" style="margin-left:8px">Import</button>
+  </form>
+  <p style="margin-top:12px"><a href="{{ url_for('download_challenge_csv_example') }}">Download example CSV</a></p>
+</div>
+{% endblock %}

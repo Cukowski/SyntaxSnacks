@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SyntaxSnacks</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/templatemo-glossy-touch.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}" />
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="brand">
+        <img class="logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="logo" />
+        <a href="{{ url_for('index') }}">SyntaxSnacks</a>
+      </div>
+      <div class="links">
+        <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint=='index' else '' }}">Home</a>
+        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint=='dashboard' else '' }}">Dashboard</a>
+        <a href="{{ url_for('leaderboard') }}" class="{{ 'active' if request.endpoint=='leaderboard' else '' }}">Leaderboard</a>
+        <a href="{{ url_for('about') }}" class="{{ 'active' if request.endpoint=='about' else '' }}">About</a>
+        <a href="{{ url_for('contact') }}" class="{{ 'active' if request.endpoint=='contact' else '' }}">Contact</a>
+        {% if current_user.is_authenticated %}
+          {% if current_user.is_admin %}<a href="{{ url_for('admin_add_challenge') }}">Admin</a>{% endif %}
+          <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+          <a href="{{ url_for('login') }}">Login</a>
+          <a href="{{ url_for('signup') }}" class="btn-primary">Sign up</a>
+        {% endif %}
+      </div>
+    </nav>
+
+    <main class="container">
+      {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+          {% for category, m in messages %}
+            {% if category != 'contact' %}
+              <div class="flash">{{ m }}</div>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer>© {{ now().year }} SyntaxSnacks</footer>
+
+    <script>
+      function toggle(id){
+        const el = document.getElementById(id);
+        if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; }
+      }
+    </script>
+    <script src="{{ url_for('static', filename='js/templatemo-glossy-touch.js') }}"></script>
+  </body>
+</html>
