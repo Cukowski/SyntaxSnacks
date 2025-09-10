@@ -318,6 +318,10 @@ def api_fun():
 # -----------------------------------------------------------------------------
 def seed_data():
     db.create_all()
+    # Enable WAL for better concurrency (SQLite)
+    with db.engine.connect() as conn:
+        conn.exec_driver_sql("PRAGMA journal_mode=WAL;")
+
     # admin
     if not User.query.filter_by(username="admin").first():
         admin = User(
