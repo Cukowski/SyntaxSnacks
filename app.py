@@ -164,7 +164,7 @@ def login():
         password = request.form.get("password", "")
         user = User.query.filter_by(username=username).first()
         if user and check_password_hash(user.password_hash, password):
-            login_user(user)
+            login_user(user, remember=True)
             return redirect(url_for("dashboard"))
         flash("Invalid credentials.")
     return render_template("login.html")
@@ -186,7 +186,7 @@ def signup():
             user = User(username=u, email=email, password_hash=generate_password_hash(pw))
             db.session.add(user)
             db.session.commit()
-            login_user(user)
+            login_user(user, remember=True)
             return redirect(url_for("dashboard"))
     return render_template("signup.html")
 
