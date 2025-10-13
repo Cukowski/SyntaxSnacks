@@ -29,11 +29,12 @@ A small, good-looking web app for bite-sized coding challenges. Users earn XP an
 
 * 🔐 **Auth** — Sign up, login, logout (Flask-Login).
 * 🧠 **Daily Challenge Flow** — Shows the next unsolved challenge.
+* 🧪 **Built-in Sandbox** — Try solutions in-browser (JavaScript or Python via Pyodide) before marking solved.
 * ⭐ **Gamification** — “Mark as solved (+10 XP)” updates XP & streak logic.
 * 🏆 **Leaderboard** — Sorted by XP, then streak.
 * 🛠️ **Admin** — Add single challenge or **bulk-import via CSV**.
 * 🎉 **Home “Did you know? / Today’s joke”** — Random item from CSV; “Show another” via `/api/fun`.
-* 📬 **Contact** — Success message scoped to the page (no global flash leaks).
+* 📬 **Contact** — Stores submissions, shows scoped success message, and surfaces entries in an admin inbox.
 * 💅 **Nice UI** — Glassmorphism styling with a minimal theme; mobile-friendly.
 
 ---
@@ -52,7 +53,7 @@ A small, good-looking web app for bite-sized coding challenges. Users earn XP an
 | Admin: New Challenge | `/admin/challenge/new`          | Requires admin                                                  |
 | Admin: Import CSV    | `/admin/challenges/import`      | Requires admin                                                  |
 | Admin: CSV Example   | `/admin/challenges/example.csv` | Download sample                                                 |
-| Admin: Contact Messages   | `/admin/messages` | Requires admin                                                  |
+| Admin: Contact Messages   | `/admin/messages` | Requires admin; review contact form submissions                 |
 | API: Fun Item        | `/api/fun`                      | Returns `{type, text}` JSON                                     |
 
 ---
@@ -170,6 +171,10 @@ DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/dbname
 
 * `id`, `text`
 
+**ContactMessage**
+
+* `id`, `name`, `email`, `message`, `created_at`
+
 ---
 
 ## Admin & Seeding
@@ -178,6 +183,8 @@ On the first run the app seeds:
 
 * **Admin user** — `username=admin`, `password=admin123`
 * One starter challenge and one starter joke.
+
+Contact form submissions persist to the database; admins can browse them at `/admin/messages`.
 
 To change the admin password later:
 
@@ -273,6 +280,7 @@ web: gunicorn app:app
 * **Nav & layout:** Edit `templates/base.html`.
 * **Home Fun Section:** `templates/index.html` + `data/fun_snacks.csv`.
 * **Gamification Rules:** See `update_streak_and_xp()` in `app.py`.
+* **In-browser Runner:** Dashboard sandbox logic lives in `templates/base.html` (runner wiring) and `dashboard.html` (UI).
 * **Daily Logic:** `get_daily_challenge_for_user()` currently returns the first unsolved challenge; swap for schedule/rotation when ready.
 
 ---
