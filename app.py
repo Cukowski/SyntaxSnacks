@@ -10,6 +10,7 @@ from flask_login import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import csv, io, random
+from werkzeug.exceptions import abort
 
 # -----------------------------------------------------------------------------
 # App & DB setup
@@ -159,10 +160,25 @@ def about():
 
 @app.route("/contact", methods=["GET", "POST"])
 def contact():
-    # Use query param to signal success; no flash, so no leak to other pages.
     if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip()
+        message = request.form.get("message", "").strip()
+
+        if not (name and email and message):
+            flash(("contact", "Please fill out all fields."))  # stays on contact page
+            return redirect(url_for("contact"))
+
+        # persist to DB
+        cm = ContactMessage(name=name, email=email, message=message)
+        db.session.add(cm)
+        db.session.commit()
+
+        # show success only on this page
+        flash(("contact", "Message sent successfully! We'll get back to you soon."))
         return redirect(url_for("contact", sent=1))
-    return render_template("contact.html", sent=request.args.get("sent"))
+
+    return render_template("contact.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -314,6 +330,22 @@ def download_challenge_csv_example():
             "Content-Disposition": 'attachment; filename="challenges_example.csv"',
         },
     )
+
+# ---- Admin: Contact
+class ContactMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(255), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now(datetime.timezone.utc))
+
+@app.route("/admin/messages")
+@login_required
+def admin_messages():
+    if not current_user.is_admin:
+        abort(403)
+    msgs = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
+    return render_template("admin_messages.html", messages=msgs)
 
 # ---- Public API for Home page
 @app.route("/api/fun")
