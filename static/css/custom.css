@@ -154,6 +154,39 @@ button, .btn-primary{ cursor:pointer; border:none; text-decoration:none !importa
 /* Utility */
 a{ color:#7ee6d5; } a:hover{ text-decoration:underline; }
 
+/* ===== Vertical rhythm (simple spacing scale) ===== */
+:root{
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 20px;
+  --space-5: 28px;
+}
+
+/* Add space between siblings inside any .glass card */
+.glass > * + * { margin-top: var(--space-3); }
+
+/* Space between top-level cards on a page */
+.container > .glass + .glass { margin-top: var(--space-5); }
+
+/* Space between stacked .card blocks (hint/solution/output, etc.) */
+.card + .card { margin-top: var(--space-2); }
+
+/* Runner area: make controls/editors not touch */
+#runner h3 { margin-bottom: var(--space-2); }
+#runner > div:first-of-type { margin-bottom: var(--space-2); } /* control row */
+#runner textarea#code { margin-top: var(--space-2); }
+#runner pre#output { margin-top: var(--space-2); }
+
+/* Buttons row spacing (Show Hint / Reveal Solution) */
+button + button { margin-left: var(--space-2); }
+
+/* Give the big CTA some air above */
+form[action*="submit_challenge"] { margin-top: var(--space-3); }
+
+/* Optional: a generic vertical stack helper you can wrap things with */
+.vstack { display: flex; flex-direction: column; gap: var(--space-3); }
+
 /* ===== Responsive ===== */
 
 @media (max-width: 860px){
