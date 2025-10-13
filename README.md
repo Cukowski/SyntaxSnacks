@@ -52,6 +52,7 @@ A small, good-looking web app for bite-sized coding challenges. Users earn XP an
 | Admin: New Challenge | `/admin/challenge/new`          | Requires admin                                                  |
 | Admin: Import CSV    | `/admin/challenges/import`      | Requires admin                                                  |
 | Admin: CSV Example   | `/admin/challenges/example.csv` | Download sample                                                 |
+| Admin: Contact Messages   | `/admin/messages` | Requires admin                                                  |
 | API: Fun Item        | `/api/fun`                      | Returns `{type, text}` JSON                                     |
 
 ---
