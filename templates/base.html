@@ -69,7 +69,148 @@
         const open = links.classList.toggle('open');
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       }
+
+      // --- JS sandbox via iframe (srcdoc; no DOM access; logs captured) ---
+      function runJsSandbox(source, input) {
+        return new Promise((resolve) => {
+          const iframe = document.createElement('iframe');
+          iframe.setAttribute('sandbox', 'allow-scripts');   // opaque origin; safe
+          iframe.style.display = 'none';
+
+          const html = `
+    <!doctype html><meta charset="utf-8">
+    <script>
+    (function(){
+      const results = [];
+      function print(){ results.push(Array.from(arguments).join(' ')); }
+      // Shadow console for this script execution
+      const console = {
+        log: (...args) => results.push(args.join(' ')),
+        error: (...args) => results.push('ERROR: ' + args.join(' ')),
+        warn: (...args) => results.push('WARN: ' + args.join(' '))
+      };
+      try {
+        ${source}
+        if (typeof solve === 'function') {
+          const out = solve(${JSON.stringify(input)});
+          if (out !== undefined) results.push(String(out));
+        }
+        parent.postMessage({ ok: true, out: results.join('\\n') }, '*');
+      } catch (e) {
+        parent.postMessage({ ok: false, out: (e && e.stack) ? e.stack : String(e) }, '*');
+      }
+    })();
+    <\/script>`;
+
+          // Prepare listener BEFORE attaching iframe
+          const done = (payload) => {
+            cleanup();
+            resolve(payload || { ok:false, out:'No response' });
+          };
+          const onMsg = (ev) => done(ev.data);
+
+          let timeout = setTimeout(() => done({ ok:false, out:'Execution timed out.' }), 5000);
+
+          function cleanup(){
+            clearTimeout(timeout);
+            window.removeEventListener('message', onMsg);
+            if (document.body.contains(iframe)) iframe.remove();
+          }
+
+          window.addEventListener('message', onMsg);
+          iframe.srcdoc = html;
+          document.body.appendChild(iframe);
+        });
+      }
+
+      // ---- Pyodide: robust runner using exec() without re-indenting user code ----
+      let _pyReady = null, _pyodide = null;
+
+      async function ensurePyodide() {
+        if (_pyReady) return _pyReady;
+        _pyReady = (async () => {
+          const s = document.createElement('script');
+          s.src = "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js";
+          document.head.appendChild(s);
+          await new Promise(r => s.onload = r);
+          _pyodide = await loadPyodide();   // stdlib (e.g., random) included
+          return _pyodide;
+        })();
+        return _pyReady;
+      }
+
+      async function runPy(source, input) {
+        await ensurePyodide();
+        try {
+          const py = `
+    import sys, traceback
+    _output = []
+
+    def print(*args):
+        _output.append(" ".join(str(a) for a in args))
+
+    _user = {}
+    # --- execute user program ---
+    try:
+        exec(${JSON.stringify(source)}, _user, _user)
+    except Exception:
+        _output.append(traceback.format_exc())
+
+    # --- call solve(input) if provided ---
+    try:
+        if 'solve' in _user:
+            res = _user['solve'](${JSON.stringify(input)})
+            if res is not None:
+                _output.append(str(res))
+    except Exception:
+        _output.append(traceback.format_exc())
+    `;
+          await _pyodide.runPythonAsync(py);
+          const out = _pyodide.globals.get('_output').toJs().join('\n');
+          return { ok: true, out };
+        } catch (e) {
+          return { ok: false, out: String(e) };
+        }
+      }
+
+      // --- Wire the UI on pages that have the runner ---
+      document.addEventListener('DOMContentLoaded', () => {
+        const runBtn = document.getElementById('runBtn');
+        if (!runBtn) return;
+        const langSel = document.getElementById('lang');
+        const code = document.getElementById('code');
+        const out = document.getElementById('output');
+
+        const starter = {
+          js: `// Write a function solve(input) and return the result
+    function solve(input){
+      // example: reverse string
+      return String(input).split('').reverse().join('');
+    }
+    // You can also use print('hello') to append output`,
+          py: `# Write a function solve(input) and return the result
+    def solve(input):
+        # example: reverse string
+        return str(input)[::-1]
+    # You can also print("hello") to append output`
+        };
+        code.value = starter[langSel.value];
+        langSel.addEventListener('change', () => { code.value = starter[langSel.value]; });
+
+        runBtn.addEventListener('click', async () => {
+          out.textContent = 'Running...';
+          const sampleInput = 'hello';
+          let result = (langSel.value === 'js')
+            ? await runJsSandbox(code.value, sampleInput)
+            : await runPy(code.value, sampleInput);
+
+          out.textContent = result.out || (result.ok ? '(no output)' : 'Error with no message');
+          out.className = 'card ' + (result.ok ? 'ok' : 'err');
+        });
+      });
     </script>
+
+
     <script src="{{ url_for('static', filename='js/templatemo-glossy-touch.js') }}"></script>
   </body>
 </html>

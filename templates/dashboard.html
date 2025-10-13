@@ -8,10 +8,27 @@
   {% if challenge %}
     <h3>Today's Snack: {{ challenge.title }}</h3>
     <p style="white-space: pre-wrap">{{ challenge.prompt }}</p>
-    {% if challenge.hints %}<button onclick="toggle('hint')" class="btn-primary">Show Hint</button>
-    <div id="hint" style="display:none;margin-top:10px" class="card"><strong>Hint:</strong><br>{{ challenge.hints }}</div>{% endif %}
-    {% if challenge.solution %}<button onclick="toggle('solution')" style="margin-left:6px">Reveal Solution</button>
-    <div id="solution" style="display:none;margin-top:10px" class="card"><strong>Solution:</strong><pre style="white-space: pre-wrap">{{ challenge.solution }}</pre></div>{% endif %}
+    <div class="glass" id="runner">
+      <h3>Try your solution</h3>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+        <label>Language</label>
+        <select id="lang">
+          <option value="js">JavaScript</option>
+          <option value="py">Python</option>
+        </select>
+        <button class="btn-primary" id="runBtn">Run</button>
+      </div>
+      <textarea id="code" rows="10" placeholder="// write a function solve(input) { ... }"></textarea>
+      <pre id="output" class="card" style="min-height:100px; margin-top:10px;"></pre>
+    </div>
+    {% if challenge.hints %}
+      <button onclick="toggle('hint')" class="ghost">Show Hint</button>
+      <div id="hint" style="display:none;margin-top:10px" class="card"><strong>Hint:</strong><br>{{ challenge.hints }}</div>
+    {% endif %}
+    {% if challenge.solution %}
+      <button onclick="toggle('solution')" class="ghost" style="margin-left:6px">Reveal Solution</button>
+      <div id="solution" style="display:none;margin-top:10px" class="card"><strong>Solution:</strong><pre style="white-space: pre-wrap">{{ challenge.solution }}</pre></div>
+    {% endif %}
     <form method="post" action="{{ url_for('submit_challenge', challenge_id=challenge.id) }}" style="margin-top:12px">
       <button type="submit" class="btn-primary">Mark as Solved (+10 XP)</button>
     </form>
