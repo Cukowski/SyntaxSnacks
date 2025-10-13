@@ -9,27 +9,41 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}" />
   </head>
   <body>
+
+    <!-- Navbar -->
     <nav class="navbar">
-      <div class="brand">
-        <img class="logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="logo" />
-        <a href="{{ url_for('index') }}">SyntaxSnacks</a>
-      </div>
-      <div class="links">
-        <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint=='index' else '' }}">Home</a>
-        <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint=='dashboard' else '' }}">Dashboard</a>
-        <a href="{{ url_for('leaderboard') }}" class="{{ 'active' if request.endpoint=='leaderboard' else '' }}">Leaderboard</a>
-        <a href="{{ url_for('about') }}" class="{{ 'active' if request.endpoint=='about' else '' }}">About</a>
-        <a href="{{ url_for('contact') }}" class="{{ 'active' if request.endpoint=='contact' else '' }}">Contact</a>
-        {% if current_user.is_authenticated %}
-          {% if current_user.is_admin %}
-            <a href="{{ url_for('admin_add_challenge') }}">Admin</a>
-            <a href="{{ url_for('admin_messages') }}">Inbox</a>
+      <div class="nav-inner">
+        <div class="brand">
+          <a class="brand-link" href="{{ url_for('index') }}">
+            <img class="logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="SyntaxSnacks logo" />
+            <span>SyntaxSnacks</span>
+          </a>
+        </div>
+
+        <!-- Mobile hamburger -->
+        <button class="menu-toggle" aria-label="Toggle menu" aria-expanded="false" onclick="toggleMenu()">
+          <span></span><span></span><span></span>
+        </button>
+
+        <!-- Links -->
+        <div id="nav-links" class="links">
+          <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint=='index' else '' }}">Home</a>
+          <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint=='dashboard' else '' }}">Dashboard</a>
+          <a href="{{ url_for('leaderboard') }}" class="{{ 'active' if request.endpoint=='leaderboard' else '' }}">Leaderboard</a>
+          <a href="{{ url_for('about') }}" class="{{ 'active' if request.endpoint=='about' else '' }}">About</a>
+          <a href="{{ url_for('contact') }}" class="{{ 'active' if request.endpoint=='contact' else '' }}">Contact</a>
+
+          {% if current_user.is_authenticated %}
+            {% if current_user.is_admin %}
+              <a href="{{ url_for('admin_add_challenge') }}">Admin</a>
+              <a href="{{ url_for('admin_messages') }}">Inbox</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+          {% else %}
+            <a href="{{ url_for('login') }}">Login</a>
+            <a href="{{ url_for('signup') }}" class="btn-primary">Sign up</a>
           {% endif %}
-          <a href="{{ url_for('logout') }}">Logout</a>
-        {% else %}
-          <a href="{{ url_for('login') }}">Login</a>
-          <a href="{{ url_for('signup') }}" class="btn-primary">Sign up</a>
-        {% endif %}
+        </div>
       </div>
     </nav>
 
@@ -49,9 +63,11 @@
     <footer>© {{ now().year }} SyntaxSnacks</footer>
 
     <script>
-      function toggle(id){
-        const el = document.getElementById(id);
-        if(el){ el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none'; }
+      function toggleMenu() {
+        const links = document.getElementById('nav-links');
+        const btn = document.querySelector('.menu-toggle');
+        const open = links.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       }
     </script>
     <script src="{{ url_for('static', filename='js/templatemo-glossy-touch.js') }}"></script>

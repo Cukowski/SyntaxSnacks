@@ -1,81 +1,127 @@
 :root { --accent: #00e0b8; }
 
-body {
+* { box-sizing: border-box; }
+
+body{
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background: radial-gradient(1200px 800px at 70% 80%, #7b4fff33, #001428 60%);
-  color: #ecf3f7;
-  margin: 0;
+  color:#ecf3f7; margin:0;
 }
 
-/* Navbar */
-.navbar {
-  position: sticky; top: 0;
-  background: rgba(20,32,50,.65);
-  backdrop-filter: blur(10px);
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 18px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  z-index: 1000;
+/* ===== Navbar ===== */
+
+.navbar{
+  position: sticky; top:0;
+  z-index: 3000; /* above any content cards */
+  backdrop-filter: saturate(140%) blur(8px);
+  -webkit-backdrop-filter: saturate(140%) blur(8px);
+  background: rgba(10,14,23,.55);
+  border-bottom: 1px solid rgba(255,255,255,.06);
 }
-.navbar .brand { display: flex; align-items: center; gap: 8px; }
-.logo { width: 28px; height: 28px; border-radius: 8px; }
-.navbar .links a { color: #d6e6ef; text-decoration: none; margin: 0 8px; }
-.navbar .links a.active, .btn-primary {
-  background: var(--accent); color: #0b1b2b;
-  padding: 8px 12px; border-radius: 999px; font-weight: 600;
+.navbar .nav-inner{
+  max-width:1100px; margin:0 auto;
+  padding:10px 16px;
+  display:grid; grid-template-columns:auto 1fr auto;
+  align-items:center; gap:12px;
 }
 
-/* Page layout */
-.container { max-width: 980px; margin: 16px auto; padding: 0 14px; }
-.glass {
-  position: relative; z-index: 2001;
+.brand-link{ display:inline-flex; gap:10px; align-items:center; text-decoration:none; }
+.logo{ width:26px; height:26px; }
+.brand-link span{ font-weight:700; color:#dffdf6; letter-spacing:.2px; }
+
+/* Links row */
+.links{ display:flex; gap:14px; align-items:center; justify-content:flex-end; }
+.links a{
+  padding:8px 10px; border-radius:10px;
+  color:#e8f3ff; text-decoration:none; line-height:1; white-space:nowrap;
+}
+.links a.active{ background:rgba(90,247,200,.18); color:#b8fff0; }
+.links .btn-primary{ padding:8px 14px; }
+
+/* Hamburger (hidden on desktop) */
+.menu-toggle{
+  display:none; width:40px; height:34px;
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.06); border-radius:10px;
+  cursor:pointer; place-items:center;
+}
+.menu-toggle span{
+  display:block; height:2px; width:20px; background:#e8f3ff;
+  margin:4px auto; border-radius:2px;
+}
+
+/* ===== Layout ===== */
+
+.container{ max-width:980px; margin:16px auto; padding:14px 14px 0; }
+
+.glass{
   background: linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,.08));
-  border: 1px solid rgba(255,255,255,.20);
-  border-radius: 16px; padding: 16px;
-  box-shadow: 0 10px 40px rgba(0,0,0,.25);
+  border:1px solid rgba(255,255,255,.20);
+  border-radius:16px; padding:16px;
+  box-shadow:0 10px 40px rgba(0,0,0,.25);
+  /* z-index removed so it doesn't cover the navbar */
 }
-footer { color: #a8c0cf; padding: 18px; }
+footer{ color:#a8c0cf; padding:18px; }
 
-/* Components */
-.stats { display: flex; gap: 8px; flex-wrap: wrap; }
-.stat {
-  background: rgba(255,255,255,.1);
-  border: 1px solid rgba(255,255,255,.15);
-  padding: 6px 10px; border-radius: 10px;
-}
-.table { width: 100%; border-collapse: collapse; }
-.table th, .table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.12); }
-.flash {
-  background: #27c082; color: #0b1b2b;
-  padding: 10px 12px; border-radius: 8px; margin: 6px 0;
-  font-weight: 600; text-align: center;
-}
-label { display: block; margin-top: 10px; color: #cfe5f4; }
-input, textarea {
-  width: 100%; border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: rgba(0,0,0,.15); color: #e8f4fb; padding: 10px;
-}
-button, .btn-primary { cursor: pointer; border: none; text-decoration: none !important; }
+/* ===== Components ===== */
 
-.hero img { width: 100%; border-radius: 16px; opacity: .85; }
+.stats{ display:flex; gap:8px; flex-wrap:wrap; }
+.stat{ background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15);
+  padding:6px 10px; border-radius:10px; }
 
-.card {
-  background: rgba(255,255,255,.12);
-  border: 1px solid rgba(255,255,255,.18);
-  border-radius: 12px; padding: 8px 10px;
+.table{ width:100%; border-collapse:collapse; }
+.table th,.table td{ padding:8px 10px; border-bottom:1px solid rgba(255,255,255,.12); }
+
+.flash{
+  background:#27c082; color:#0b1b2b;
+  padding:10px 12px; border-radius:8px; margin:6px 0;
+  font-weight:600; text-align:center;
+}
+
+label{ display:block; margin-top:10px; color:#cfe5f4; }
+input, textarea{
+  width:100%; border-radius:10px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(0,0,0,.15); color:#e8f4fb; padding:10px;
+}
+
+button, .btn-primary{ cursor:pointer; border:none; text-decoration:none !important; }
+
+.hero img{ width:100%; border-radius:16px; opacity:.85; }
+
+.card{
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:12px; padding:8px 10px;
 }
 
 /* Public fun/joke card */
-.fun-card, .card.joke {
-  background: rgba(255,255,255,.85);
-  color: #0b1b2b;
-  border: 1px solid rgba(0,0,0,.08);
-  border-left: 4px solid var(--accent);
-  border-radius: 12px;
-  padding: 12px 14px;
+.fun-card, .card.joke{
+  background:rgba(255,255,255,.85);
+  color:#0b1b2b;
+  border:1px solid rgba(0,0,0,.08);
+  border-left:4px solid var(--accent);
+  border-radius:12px; padding:12px 14px;
 }
 
 /* Utility */
-a { color: #7ee6d5; }
-a:hover { text-decoration: underline; }
+a{ color:#7ee6d5; } a:hover{ text-decoration:underline; }
+
+/* ===== Responsive ===== */
+
+@media (max-width: 860px){
+  .navbar .nav-inner{ grid-template-columns:auto auto; }
+  .menu-toggle{ display:grid; }              /* show hamburger */
+  .links{
+    display:none; grid-column:1 / -1;
+    flex-direction:column; align-items:stretch;
+    gap:8px; margin-top:8px; padding:10px;
+    background:rgba(16,22,33,.7);
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:14px;
+  }
+  .links.open{ display:flex; }
+  .links a, .links .btn-primary{
+    padding:12px 14px; text-align:left; width:100%;
+  }
+}
