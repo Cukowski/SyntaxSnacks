@@ -205,3 +205,70 @@ form[action*="submit_challenge"] { margin-top: var(--space-3); }
     padding:12px 14px; text-align:left; width:100%;
   }
 }
+
+/* ===== Dungeon Map Styles ===== */
+.dungeon-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.dungeon-island {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  background: linear-gradient(160deg, rgba(255,255,255,.15), rgba(255,255,255,.05));
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden; /* Ensures content respects border-radius */
+}
+
+.dungeon-island:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+}
+
+.dungeon-island .island-link {
+  display: block;
+  padding: 16px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.dungeon-island h4 { margin: 0 0 8px; color: #fff; }
+.dungeon-island p { margin: 0 0 16px; font-size: 0.9em; opacity: 0.8; }
+
+.progress-bar {
+  width: 100%;
+  height: 24px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.progress-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, #1bbf9f, #45f0c8);
+  border-radius: 12px;
+  transition: width 0.5s ease-in-out;
+}
+.progress-bar span {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  line-height: 24px;
+  font-weight: bold;
+  color: #0b1b2b;
+  text-shadow: 0 0 2px rgba(255,255,255,0.5);
+}
+
+.island-status { margin-top: 12px; font-weight: bold; text-align: center; }
+.island-status.cleared { color: #45f0c8; }
+
+.dungeon-island.locked {
+  opacity: 0.6;
+  background: rgba(0,0,0,0.2);
+  pointer-events: none; /* Disables clicks on locked islands */
+}
+.dungeon-island.locked:hover { transform: none; box-shadow: none; }
+.dungeon-island.cleared { border-color: #45f0c8; }

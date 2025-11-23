@@ -29,6 +29,8 @@
         <div id="nav-links" class="links">
           <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint=='index' else '' }}">Home</a>
           <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint=='dashboard' else '' }}">Dashboard</a>
+          <a href="{{ url_for('dungeons_list') }}" class="{{ 'active' if request.endpoint in ['dungeons_list', 'dungeon_view'] else '' }}">Explorer</a>
+          <a href="{{ url_for('puzzles_hub') }}" class="{{ 'active' if request.endpoint.startswith('puzzle') else '' }}">Puzzles</a>
           <a href="{{ url_for('leaderboard') }}" class="{{ 'active' if request.endpoint=='leaderboard' else '' }}">Leaderboard</a>
           <a href="{{ url_for('about') }}" class="{{ 'active' if request.endpoint=='about' else '' }}">About</a>
           <a href="{{ url_for('contact') }}" class="{{ 'active' if request.endpoint=='contact' else '' }}">Contact</a>

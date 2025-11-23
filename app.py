@@ -77,6 +77,29 @@ class Joke(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
 
+# New models for Dungeons feature
+class Dungeon(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    topic = db.Column(db.String(60), nullable=False, index=True) # Links to Challenge.topic
+    unlock_xp = db.Column(db.Integer, default=0) # XP required to see/enter
+    reward_xp = db.Column(db.Integer, default=50) # Bonus XP for completion
+
+class DungeonCompletion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    dungeon_id = db.Column(db.Integer, db.ForeignKey("dungeon.id"), nullable=False)
+    completed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'dungeon_id'),)
+
+class PuzzleCompletion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    puzzle_name = db.Column(db.String(80), nullable=False) # e.g., "bit_flipper_lvl_1"
+    completed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('user_id', 'puzzle_name'),)
+
 # -----------------------------------------------------------------------------
 # CSV jokes/facts (Home page)
 # -----------------------------------------------------------------------------
@@ -144,6 +167,30 @@ def update_streak_and_xp(user: User):
     user.last_active_date = today
     user.xp = (user.xp or 0) + 10
     db.session.commit()
+
+def check_and_complete_dungeon(user: User, challenge: Challenge):
+    """After a challenge is solved, check if it completes a dungeon."""
+    if not challenge.topic:
+        return None # Challenge isn't part of a topic/dungeon
+
+    dungeon = Dungeon.query.filter_by(topic=challenge.topic).first()
+    if not dungeon:
+        return None # No dungeon for this topic
+
+    # Check if user has already completed this dungeon
+    if DungeonCompletion.query.filter_by(user_id=user.id, dungeon_id=dungeon.id).first():
+        return None
+
+    # Get all challenge IDs for this dungeon's topic
+    dungeon_challenge_ids = {c.id for c in Challenge.query.filter_by(topic=dungeon.topic).all()}
+    solved_challenge_ids = {s.challenge_id for s in Submission.query.filter_by(user_id=user.id).all()}
+
+    if dungeon_challenge_ids.issubset(solved_challenge_ids):
+        # User has solved all challenges in this dungeon!
+        db.session.add(DungeonCompletion(user_id=user.id, dungeon_id=dungeon.id))
+        user.xp = (user.xp or 0) + dungeon.reward_xp
+        db.session.commit()
+        return dungeon # Return the completed dungeon to flash a message
 
 def admin_required():
     return current_user.is_authenticated and current_user.is_admin
@@ -236,7 +283,11 @@ def submit_challenge(challenge_id):
     if not existing:
         db.session.add(Submission(user_id=current_user.id, challenge_id=ch.id))
         update_streak_and_xp(current_user)
-        flash("Great! Challenge marked as solved. +10 XP")
+        completed_dungeon = check_and_complete_dungeon(current_user, ch)
+        if completed_dungeon:
+            flash(f"Challenge solved! You cleared the {completed_dungeon.name} and earned a {completed_dungeon.reward_xp} XP bonus!")
+        else:
+            flash("Great! Challenge marked as solved. +10 XP")
     else:
         flash("You already solved this one.")
     return redirect(url_for("dashboard"))
@@ -245,6 +296,106 @@ def submit_challenge(challenge_id):
 def leaderboard():
     users = User.query.order_by(User.xp.desc(), User.streak.desc()).limit(50).all()
     return render_template("leaderboard.html", users=users)
+
+# ---- Dungeons & Exploration
+@app.route("/dungeons")
+@login_required
+def dungeons_list():
+    """Main exploration page listing all available dungeons."""
+    # Get all dungeons, ordered by unlock XP
+    all_dungeons = Dungeon.query.order_by(Dungeon.unlock_xp).all()
+
+    # Get total challenges per topic
+    total_challenges_by_topic = dict(
+        db.session.query(Challenge.topic, func.count(Challenge.id))
+        .group_by(Challenge.topic)
+        .all()
+    )
+
+    # Get user's solved challenges per topic
+    solved_challenges_by_topic = dict(
+        db.session.query(Challenge.topic, func.count(Submission.id))
+        .join(Challenge, Challenge.id == Submission.challenge_id)
+        .filter(Submission.user_id == current_user.id)
+        .group_by(Challenge.topic)
+        .all()
+    )
+
+    dungeon_data = []
+    for d in all_dungeons:
+        total = total_challenges_by_topic.get(d.topic, 0)
+        solved = solved_challenges_by_topic.get(d.topic, 0)
+        progress = (solved / total * 100) if total > 0 else 0
+        dungeon_data.append({
+            "dungeon": d,
+            "progress": round(progress),
+            "is_locked": current_user.xp < d.unlock_xp
+        })
+
+    return render_template("dungeons_list.html", dungeon_data=dungeon_data)
+
+@app.route("/dungeons/<int:dungeon_id>")
+@login_required
+def dungeon_view(dungeon_id):
+    """View a single dungeon and its challenges."""
+    dungeon = Dungeon.query.get_or_404(dungeon_id)
+
+    if current_user.xp < dungeon.unlock_xp:
+        flash("You need more XP to access this dungeon.")
+        return redirect(url_for("dungeons_list"))
+
+    # Get challenges for this dungeon's topic
+    challenges = Challenge.query.filter_by(topic=dungeon.topic).order_by(Challenge.id).all()
+    solved_challenge_ids = {s.challenge_id for s in Submission.query.filter_by(user_id=current_user.id).all()}
+
+    # Check if all challenges in this dungeon are solved
+    all_challenges_solved = all(ch.id in solved_challenge_ids for ch in challenges)
+
+    return render_template(
+        "dungeon_view.html", dungeon=dungeon, challenges=challenges,
+        solved_ids=solved_challenge_ids, all_solved=all_challenges_solved
+    )
+
+# ---- Puzzles & Mini-Games
+@app.route("/puzzles")
+@login_required
+def puzzles_hub():
+    """A hub page listing all available mini-game puzzles."""
+    completed_puzzles = {pc.puzzle_name for pc in PuzzleCompletion.query.filter_by(user_id=current_user.id).all()}
+    return render_template("puzzles_hub.html", completed_puzzles=completed_puzzles)
+
+@app.route("/puzzles/bit-flipper")
+@login_required
+def puzzle_bit_flipper():
+    """The Bit Flipper mini-game."""
+    # Check if user already completed this puzzle
+    puzzle_name = "bit_flipper_lvl_1" # Check if the completion record exists. This should be a boolean.
+    is_completed = PuzzleCompletion.query.filter_by(user_id=current_user.id, puzzle_name=puzzle_name).first() is not None
+    
+    # For this simple version, we'll use a fixed number.
+    # A more advanced version could have levels with random numbers.
+    target_number = 42
+    xp_reward = 5
+
+    return render_template("puzzle_bit_flipper.html", target_number=target_number, xp_reward=xp_reward, is_completed=is_completed, puzzle_name=puzzle_name)
+
+@app.route("/puzzles/complete", methods=["POST"])
+@login_required
+def complete_puzzle():
+    """Endpoint for mini-games to call upon completion to award XP."""
+    data = request.get_json()
+    puzzle_name = data.get("puzzle_name")
+    if not puzzle_name:
+        return {"error": "Puzzle name is required."}, 400
+
+    # Check if already completed
+    if PuzzleCompletion.query.filter_by(user_id=current_user.id, puzzle_name=puzzle_name).first():
+        return {"message": "Puzzle already completed."}, 200
+
+    db.session.add(PuzzleCompletion(user_id=current_user.id, puzzle_name=puzzle_name))
+    current_user.xp = (current_user.xp or 0) + 5 # Award 5 XP for puzzles
+    db.session.commit()
+    return {"message": "XP awarded!", "new_xp": current_user.xp}, 200
 
 # ---- Admin: add single challenge
 @app.route("/admin/challenge/new", methods=["GET", "POST"])
@@ -538,6 +689,21 @@ def seed_data():
         db.session.add(
             Joke(text="There are 10 kinds of people: those who understand binary and those who don't.")
         )
+    # default dungeons
+    if Dungeon.query.count() == 0:
+        db.session.add(
+            Dungeon(
+                name="The String Sanctum",
+                description="A series of challenges to test your string manipulation mastery.",
+                topic="strings",
+                unlock_xp=0,
+                reward_xp=50
+            )
+        )
+        db.session.add(
+            Dungeon(name="The Logic Labyrinth", description="Puzzles that require algorithmic thinking and data structures.", topic="algorithms", unlock_xp=50, reward_xp=100)
+        )
+
     db.session.commit()
 
 # -----------------------------------------------------------------------------

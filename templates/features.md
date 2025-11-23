@@ -1,11 +1,11 @@
 # Features & Routes
 
 ## Core Features
+
 *   🔐 **Auth** — Sign up, login, logout (Flask-Login).
 *   🧠 **Daily Challenge Flow** — Shows the next unsolved challenge based on a simple progression.
 *   🧪 **Built-in Sandbox** — Try solutions in-browser (JavaScript or Python via Pyodide) before marking solved.
-*   🗺️ **Dungeon Explorer** — Explore themed "islands" of challenges and earn bonus XP for clearing them.
-*   🧩 **Puzzle Arcade** — Play interactive mini-games like "Bit Flipper" to test fundamental knowledge.
+*   🗺️ **Dungeon Explorer** — Explore "dungeons" (groups of challenges by topic) and earn bonus XP for clearing them.
 *   ⭐ **Gamification** — “Mark as solved (+10 XP)” updates XP & streak logic.
 *   🏆 **Leaderboard** — Sorted by XP, then streak.
 *   🛠️ **Admin** — Add single challenge or **bulk-import via CSV**.
@@ -27,8 +27,7 @@
 | Dashboard                 | `/dashboard`                    | Requires login; daily challenge, hint, solution, mark-as-solved |
 | Leaderboard               | `/leaderboard`                  | Public                                                          |
 | Dungeon Explorer          | `/dungeons`                     | Requires login; lists available dungeons                        |
-| Puzzle Arcade             | `/puzzles`                      | Requires login; lists available mini-games                      |
-| Bit Flipper Puzzle        | `/puzzles/bit-flipper`          | Requires login; the binary number puzzle game                   |
+| Dungeon View              | `/dungeons/<id>`                | Requires login; shows challenges for a specific dungeon         |
 | Admin: New Challenge      | `/admin/challenge/new`          | Requires admin                                                  |
 | Admin: Import CSV         | `/admin/challenges/import`      | Requires admin                                                  |
 | Admin: CSV Example        | `/admin/challenges/example.csv` | Download sample                                                 |

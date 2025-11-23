@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="glass">
+  <a href="{{ url_for('dungeons_list') }}">&larr; Back to Dungeon Explorer</a>
+  <h2 style="margin-top: 12px;">{{ dungeon.name }}</h2>
+  <p>{{ dungeon.description }}</p>
+
+  <div class="vstack" style="margin-top: 20px;">
+    {% for ch in challenges %}
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h5 style="margin: 0;">{{ ch.title }}</h5>
+          {% if ch.id in solved_ids %}
+            <span style="color: #45f0c8;">Solved ✔</span>
+          {% else %}
+            <span style="opacity: 0.6;">Unsolved</span>
+          {% endif %}
+        </div>
+        <p style="white-space: pre-wrap; margin: 8px 0 0;">{{ ch.prompt }}</p>
+      </div>
+    {% else %}
+      <p>No challenges found for this dungeon yet.</p>
+    {% endfor %}
+  </div>
+  {% if all_solved and challenges %}
+    <p style="margin-top: 20px; color: #45f0c8; font-weight: bold;">Congratulations! You have cleared this dungeon.</p>
+  {% else %}
+    <p style="margin-top: 20px;">Solve the "Today's Snack" on your <a href="{{ url_for('dashboard') }}">Dashboard</a> to complete these challenges.</p>
+  {% endif %}
+</div>
+{% endblock %}

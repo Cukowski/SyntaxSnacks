@@ -32,10 +32,8 @@ The application uses several SQLAlchemy models to structure its data in the data
 *   `unlock_xp`: (Integer) The amount of XP a user needs to see this dungeon.
 *   `reward_xp`: (Integer) The bonus XP awarded for completing all challenges in the dungeon.
 
-### PuzzleCompletion
-
-*   `id`, `user_id`, `puzzle_name`, `completed_at`: Records a user's completion of a specific mini-game puzzle to prevent repeat XP awards.
-
+### DungeonCompletion
+*   `id`, `user_id`, `dungeon_id`, `completed_at`: Records a user's completion of a dungeon.
 ### Message
 
 *   `id`, `name`, `email`, `body`, `created_at`: Stores a submission from the contact form.

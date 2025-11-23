@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .bit-flipper { text-align: center; }
+  .switch-container { display: flex; justify-content: center; gap: 10px; margin: 20px 0; }
+  .switch {
+    width: 50px; height: 80px; background-color: #334; border: 2px solid #556;
+    border-radius: 8px; cursor: pointer; position: relative;
+    transition: background-color 0.2s;
+  }
+  .switch .handle {
+    width: 40px; height: 35px; background-color: #889; border-radius: 4px;
+    position: absolute; left: 50%; transform: translateX(-50%);
+    transition: top 0.2s ease-out;
+  }
+  .switch.on { background-color: #45f0c8; border-color: #fff; }
+  .switch.on .handle { background-color: #fff; }
+  .switch.off .handle { top: 40px; }
+  .switch.on .handle { top: 5px; }
+  .bit-value { font-size: 0.8em; color: #aaa; margin-top: 5px; }
+  #result-display { font-size: 1.5em; font-weight: bold; font-family: monospace; }
+  #feedback { height: 24px; margin-top: 10px; font-weight: bold; }
+  #feedback.correct { color: #45f0c8; }
+  #feedback.incorrect { color: #ff6b6b; }
+</style>
+
+<div class="glass">
+  <a href="{{ url_for('puzzles_hub') }}">&larr; Back to Puzzle Arcade</a>
+  <div class="bit-flipper">
+    <h2 style="margin-top: 12px;">Bit Flipper</h2>
+    <p>Click the switches to represent the number <strong>{{ target_number }}</strong> in binary.</p>
+
+    <div class="switch-container">
+      {% for i in range(8) %}
+      <div class="switch-wrapper">
+        <div class="switch off" data-value="{{ 2**(7-i) }}">
+          <div class="handle"></div>
+        </div>
+        <div class="bit-value">{{ 2**(7-i) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div>
+      Current Value: <span id="result-display">0</span>
+    </div>
+    <div id="feedback"></div>
+    {% if is_completed %}
+    <p style="color: #45f0c8; font-weight: bold; margin-top: 10px;">You have already completed this puzzle!</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const switches = document.querySelectorAll('.switch');
+  const resultDisplay = document.getElementById('result-display');
+  const feedback = document.getElementById('feedback');
+  const targetNumber = {{ target_number }};
+  const isCompleted = {{ is_completed|tojson }};
+  let isLocked = isCompleted;
+
+  function updateValue() {
+    let currentValue = 0;
+    switches.forEach(s => {
+      if (s.classList.contains('on')) {
+        currentValue += parseInt(s.dataset.value, 10);
+      }
+    });
+    resultDisplay.textContent = currentValue;
+    checkAnswer(currentValue);
+  }
+
+  function checkAnswer(value) {
+    if (value === targetNumber) {
+      feedback.textContent = 'Correct! +{{ xp_reward }} XP';
+      feedback.className = 'correct';
+      if (!isLocked) {
+        isLocked = true; // Prevent multiple submissions
+        awardXp();
+      }
+    } else {
+      feedback.textContent = 'Keep trying...';
+      feedback.className = 'incorrect';
+    }
+  }
+
+  async function awardXp() {
+    try {
+      const response = await fetch("{{ url_for('complete_puzzle') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ puzzle_name: '{{ puzzle_name }}' })
+      });
+      if (!response.ok) throw new Error('Failed to award XP');
+    } catch (error) {
+      console.error(error);
+      feedback.textContent = 'Correct! (But failed to save XP)';
+    }
+  }
+
+  switches.forEach(s => {
+    s.addEventListener('click', () => {
+      if (isLocked) return;
+      s.classList.toggle('on');
+      s.classList.toggle('off');
+      updateValue();
+    });
+  });
+});
+</script>
+{% endblock %}

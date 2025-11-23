@@ -18,7 +18,8 @@ A small, good-looking web app for bite-sized coding challenges. Users earn XP an
 ## Features
 * 🔐 **Auth** — Sign up, login, logout (Flask-Login).
 * 🧠 **Daily Challenge Flow** — Shows the next unsolved challenge.
-* 🧪 **Built-in Sandbox** — Try solutions in-browser (JavaScript or Python via Pyodide) before marking solved.
+* 🗺️ **Dungeon Explorer** — Explore themed "islands" of challenges and earn bonus XP for clearing them.
+* 🧩 **Puzzle Arcade** — Play interactive mini-games like "Bit Flipper" to test fundamental knowledge.
 * ⭐ **Gamification** — “Mark as solved (+10 XP)” updates XP & streak logic.
 * 🏆 **Leaderboard** — Sorted by XP, then streak.
 * 🛠️ **Admin** — Add single challenge or **bulk-import via CSV**.

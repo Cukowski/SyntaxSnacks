@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="glass">
+  <div style="text-align: center;">
+    <h2>World Map</h2>
+    <p>Explore the islands to master new topics. Clear an island to earn a bonus XP reward!</p>
+  </div>
+
+  <div class="dungeon-map">
+    {% for item in dungeon_data %}
+      {% set d = item.dungeon %}
+      {% set is_cleared = item.progress == 100 %}
+
+      <div class="dungeon-island {{ 'locked' if item.is_locked else '' }} {{ 'cleared' if is_cleared else '' }}">
+        <a href="{{ url_for('dungeon_view', dungeon_id=d.id) if not item.is_locked else '#' }}" class="island-link">
+          <div class="island-content">
+            <h4>{{ d.name }}</h4>
+            <p>{{ d.description }}</p>
+            <div class="progress-bar">
+              <div class="progress-bar-inner" style="width: {{ item.progress }}%;"></div>
+              <span>{{ item.progress }}%</span>
+            </div>
+            {% if item.is_locked %}
+              <div class="island-status">🔒 Locked ({{ d.unlock_xp }} XP required)</div>
+            {% elif is_cleared %}
+              <div class="island-status cleared">🏝️ Cleared! (+{{ d.reward_xp }} XP)</div>
+            {% endif %}
+          </div>
+        </a>
+      </div>
+    {% else %}
+      <p>No dungeons are available for you yet. Keep solving challenges to gain XP and unlock more!</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
