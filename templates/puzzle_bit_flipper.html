@@ -22,13 +22,16 @@
   #feedback { height: 24px; margin-top: 10px; font-weight: bold; }
   #feedback.correct { color: #45f0c8; }
   #feedback.incorrect { color: #ff6b6b; }
+  #completion-actions .completion-message { margin-bottom: 10px; }
+  #completion-actions .btn { display: inline-block; } /* Ensure button has block properties for margin */
+
 </style>
 
 <div class="glass">
   <a href="{{ url_for('puzzles_hub') }}">&larr; Back to Puzzle Arcade</a>
   <div class="bit-flipper">
-    <h2 style="margin-top: 12px;">Bit Flipper</h2>
-    <p>Click the switches to represent the number <strong>{{ target_number }}</strong> in binary.</p>
+    <h2 style="margin-top: 12px;">{{ title }} (Level {{ level }}/{{ total_levels }})</h2>
+    <p>Click the switches to represent the decimal number <strong>{{ target_number }}</strong> in binary.</p>
 
     <div class="switch-container">
       {% for i in range(8) %}
@@ -45,9 +48,16 @@
       Current Value: <span id="result-display">0</span>
     </div>
     <div id="feedback"></div>
-    {% if is_completed %}
-    <p style="color: #45f0c8; font-weight: bold; margin-top: 10px;">You have already completed this puzzle!</p>
-    {% endif %}
+    <div id="completion-actions" style="margin-top: 10px;">
+      {% if is_completed %}
+        <p class="completion-message" style="color: #45f0c8; font-weight: bold;">You have already completed this puzzle!</p>
+        {% if level < total_levels %}
+          <div>
+            <a href="{{ url_for('puzzle_bit_flipper', level_num=level + 1) }}" class="btn">Next Level &rarr;</a>
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
   </div>
 </div>
 
@@ -78,6 +88,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!isLocked) {
         isLocked = true; // Prevent multiple submissions
         awardXp();
+
+        // Show 'Next Level' button if applicable
+        const nextLevel = {{ level + 1 }};
+        if (nextLevel <= {{ total_levels }}) {
+          document.getElementById('completion-actions').innerHTML = `<div><a href="{{ url_for('puzzle_bit_flipper', level_num=level + 1) }}" class="btn">Next Level &rarr;</a></div>`;
+        }
       }
     } else {
       feedback.textContent = 'Keep trying...';

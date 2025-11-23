@@ -364,20 +364,93 @@ def puzzles_hub():
     completed_puzzles = {pc.puzzle_name for pc in PuzzleCompletion.query.filter_by(user_id=current_user.id).all()}
     return render_template("puzzles_hub.html", completed_puzzles=completed_puzzles)
 
-@app.route("/puzzles/bit-flipper")
-@login_required
-def puzzle_bit_flipper():
-    """The Bit Flipper mini-game."""
-    # Check if user already completed this puzzle
-    puzzle_name = "bit_flipper_lvl_1" # Check if the completion record exists. This should be a boolean.
-    is_completed = PuzzleCompletion.query.filter_by(user_id=current_user.id, puzzle_name=puzzle_name).first() is not None
-    
-    # For this simple version, we'll use a fixed number.
-    # A more advanced version could have levels with random numbers.
-    target_number = 42
-    xp_reward = 5
+BIT_FLIPPER_LEVELS = [
+    {"level": 1, "target": 10, "title": "Bit Flipper: Getting Started"},
+    {"level": 2, "target": 42, "title": "Bit Flipper: A Classic"},
+    {"level": 3, "target": 170, "title": "Bit Flipper: Alternating Bits"}, # 10101010
+    {"level": 4, "target": 195, "title": "Bit Flipper: Edge Case"},      # 11000011
+]
 
-    return render_template("puzzle_bit_flipper.html", target_number=target_number, xp_reward=xp_reward, is_completed=is_completed, puzzle_name=puzzle_name)
+@app.route("/puzzles/bit-flipper/<int:level_num>")
+@login_required
+def puzzle_bit_flipper(level_num):
+    """The Bit Flipper mini-game."""
+    if not (1 <= level_num <= len(BIT_FLIPPER_LEVELS)):
+        abort(404)
+
+    level_data = BIT_FLIPPER_LEVELS[level_num - 1].copy()
+    puzzle_name = f"bit_flipper_lvl_{level_num}"
+    is_completed = PuzzleCompletion.query.filter_by(user_id=current_user.id, puzzle_name=puzzle_name).first() is not None
+
+    level_data.update({
+        "puzzle_name": puzzle_name,
+        "is_completed": is_completed,
+        "xp_reward": 5,
+        "total_levels": len(BIT_FLIPPER_LEVELS)
+    })
+
+    return render_template("puzzle_bit_flipper.html", **level_data)
+
+SELECTOR_SLEUTH_LEVELS = [
+    {
+        "level": 1,
+        "title": "Selector Sleuth: The Basics",
+        "instruction": "Select all the `<span>` elements that are inside a `<div>` with the class `box`.",
+        "target_selector": "div.box span",
+        "html_snippet": """<div class="container">
+  <p>Some text here.</p>
+  <div class="box">
+    <span>Apple</span>
+    <span>Banana</span>
+  </div>
+  <span>Orange</span>
+</div>"""
+    },
+    {
+        "level": 2,
+        "title": "Selector Sleuth: Child's Play",
+        "instruction": "Select only the `<li>` elements that are *direct children* of the `<ul>` with the ID `fruit-list`.",
+        "target_selector": "#fruit-list > li",
+        "html_snippet": """<ul id="fruit-list">
+  <li>Apple</li>
+  <li>Banana</li>
+  <div class="nested">
+    <li>Not a direct child!</li>
+  </div>
+  <li>Cherry</li>
+</ul>"""
+    },
+    {
+        "level": 3,
+        "title": "Selector Sleuth: The Next Sibling",
+        "instruction": "Select the paragraph (`<p>`) that immediately follows the `<h2>` heading.",
+        "target_selector": "h2 + p",
+        "html_snippet": """<div class="article">
+  <h2>An Important Heading</h2>
+  <p>This is the one you want.</p>
+  <p>This one is not adjacent.</p>
+</div>"""
+    }
+]
+
+@app.route("/puzzles/selector-sleuth/<int:level_num>")
+@login_required
+def puzzle_selector_sleuth(level_num):
+    """The Selector Sleuth mini-game for CSS selectors."""
+    if not (1 <= level_num <= len(SELECTOR_SLEUTH_LEVELS)):
+        abort(404)
+
+    level_data = SELECTOR_SLEUTH_LEVELS[level_num - 1].copy()
+    puzzle_name = f"selector_sleuth_lvl_{level_num}"
+    is_completed = PuzzleCompletion.query.filter_by(user_id=current_user.id, puzzle_name=puzzle_name).first() is not None
+
+    level_data.update({
+        "puzzle_name": puzzle_name,
+        "is_completed": is_completed,
+        "xp_reward": 5,
+        "total_levels": len(SELECTOR_SLEUTH_LEVELS)
+    })
+    return render_template("puzzle_selector_sleuth.html", **level_data)
 
 @app.route("/puzzles/complete", methods=["POST"])
 @login_required

@@ -9,11 +9,22 @@
   <div class="dungeon-map">
     <!-- Bit Flipper Puzzle -->
     <div class="dungeon-island {{ 'cleared' if 'bit_flipper_lvl_1' in completed_puzzles else '' }}">
-      <a href="{{ url_for('puzzle_bit_flipper') }}" class="island-link">
+      <a href="{{ url_for('puzzle_bit_flipper', level_num=1) }}" class="island-link">
         <div class="island-content">
           <h4>Bit Flipper</h4>
           <p>A quick puzzle about binary numbers. Convert the target decimal number to its 8-bit binary representation.</p>
           <div class="island-status">{{ '✅ Completed' if 'bit_flipper_lvl_1' in completed_puzzles else '+5 XP Reward' }}</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Selector Sleuth Puzzle -->
+    <div class="dungeon-island {{ 'cleared' if 'selector_sleuth_lvl_1' in completed_puzzles else '' }}">
+      <a href="{{ url_for('puzzle_selector_sleuth', level_num=1) }}" class="island-link">
+        <div class="island-content">
+          <h4>Selector Sleuth</h4>
+          <p>A hands-on puzzle for practicing your CSS selector skills. Find the right elements to solve the case!</p>
+          <div class="island-status">{{ '✅ Completed' if 'selector_sleuth_lvl_1' in completed_puzzles else '+5 XP Reward' }}</div>
         </div>
       </a>
     </div>

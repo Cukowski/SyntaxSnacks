@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .selector-sleuth-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  #html-preview-box {
+    background: #101622;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 12px;
+    padding: 16px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    color: #d6e6ff;
+  }
+  #html-preview-box .highlight {
+    background-color: rgba(69, 240, 200, 0.4);
+    outline: 2px solid #45f0c8;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(69, 240, 200, 0.5);
+  }
+  #selector-input {
+    font-family: monospace;
+    font-size: 1.1em;
+  }
+  #feedback { height: 24px; margin-top: 10px; font-weight: bold; }
+  #feedback.correct { color: #45f0c8; }
+  #feedback.incorrect { color: #ff6b6b; }
+
+  @media (max-width: 768px) {
+    .selector-sleuth-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="glass">
+  <a href="{{ url_for('puzzles_hub') }}">&larr; Back to Puzzle Arcade</a>
+  <div style="text-align: center;">
+    <h2 style="margin-top: 12px;">{{ title }} (Level {{ level }}/{{ total_levels }})</h2>
+    <p>{{ instruction }}</p>
+  </div>
+
+  <div class="selector-sleuth-grid">
+    <div>
+      <label for="selector-input">Your Selector:</label>
+      <input type="text" id="selector-input" placeholder="e.g., div .item" autocomplete="off" {% if is_completed %}disabled{% endif %}>
+      <div id="feedback"></div>
+      <div id="completion-actions" style="margin-top: 10px;">
+        {% if is_completed %}
+          <p style="color: #45f0c8; font-weight: bold;">You have already completed this puzzle!</p>
+          {% if level < total_levels %}
+            <a href="{{ url_for('puzzle_selector_sleuth', level_num=level + 1) }}" class="btn">Next Level &rarr;</a>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    <div>
+      <label>HTML Preview:</label>
+      <div id="html-preview-box"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const selectorInput = document.getElementById('selector-input');
+  const previewBox = document.getElementById('html-preview-box');
+  const feedback = document.getElementById('feedback');
+
+  const htmlSnippet = {{ html_snippet|tojson }};
+  const targetSelector = {{ target_selector|tojson }};
+  const isCompleted = {{ is_completed|tojson }};
+  let isLocked = isCompleted;
+
+  // Set the initial HTML content
+  previewBox.innerHTML = htmlSnippet;
+
+  const allElements = Array.from(previewBox.querySelectorAll('*'));
+  const targetElements = new Set(previewBox.querySelectorAll(targetSelector));
+
+  function checkAnswer() {
+    if (isLocked) return;
+
+    const currentSelector = selectorInput.value.trim();
+    allElements.forEach(el => el.classList.remove('highlight'));
+
+    if (!currentSelector) {
+      feedback.textContent = '';
+      return;
+    }
+
+    try {
+      const selectedElements = new Set(previewBox.querySelectorAll(currentSelector));
+      selectedElements.forEach(el => el.classList.add('highlight'));
+
+      if (selectedElements.size === targetElements.size &&
+          [...selectedElements].every(el => targetElements.has(el))) {
+        feedback.textContent = 'Correct! +{{ xp_reward }} XP';
+        feedback.className = 'correct';
+        isLocked = true;
+        selectorInput.disabled = true;
+        awardXp();
+        
+        // Show 'Next Level' button if applicable
+        const nextLevel = {{ level + 1 }};
+        if (nextLevel <= {{ total_levels }}) {
+          document.getElementById('completion-actions').innerHTML = `<a href="{{ url_for('puzzle_selector_sleuth', level_num=level + 1) }}" class="btn">Next Level &rarr;</a>`;
+        }
+      } else {
+        feedback.textContent = 'Not quite, keep trying...';
+        feedback.className = 'incorrect';
+      }
+    } catch (e) {
+      feedback.textContent = 'Invalid selector';
+      feedback.className = 'incorrect';
+    }
+  }
+
+  async function awardXp() {
+    await fetch("{{ url_for('complete_puzzle') }}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ puzzle_name: '{{ puzzle_name }}' })
+    }).catch(console.error);
+  }
+
+  selectorInput.addEventListener('input', checkAnswer);
+});
+</script>
+{% endblock %}

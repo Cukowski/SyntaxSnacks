@@ -28,7 +28,8 @@
 | Leaderboard               | `/leaderboard`                  | Public                                                          |
 | Dungeon Explorer          | `/dungeons`                     | Requires login; lists available dungeons                        |
 | Puzzle Arcade             | `/puzzles`                      | Requires login; lists available mini-games                      |
-| Bit Flipper Puzzle        | `/puzzles/bit-flipper`          | Requires login; the binary number puzzle game                   |
+| Bit Flipper Puzzle        | `/puzzles/bit-flipper/<level>`  | Requires login; the binary number puzzle game                   |
+| Selector Sleuth Puzzle    | `/puzzles/selector-sleuth/<level>` | Requires login; the CSS selector puzzle game                    |
 | Admin: New Challenge      | `/admin/challenge/new`          | Requires admin                                                  |
 | Admin: Import CSV         | `/admin/challenges/import`      | Requires admin                                                  |
 | Admin: CSV Example        | `/admin/challenges/example.csv` | Download sample                                                 |
