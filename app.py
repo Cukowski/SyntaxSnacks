@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, date, timedelta, timezone
 from werkzeug.middleware.proxy_fix import ProxyFix
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import (
     LoginManager, login_user, login_required, logout_user,
@@ -10,6 +10,7 @@ from flask_login import (
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import csv, io, random
+from sqlalchemy import or_, func
 from werkzeug.exceptions import abort
 
 # -----------------------------------------------------------------------------
@@ -118,7 +119,7 @@ def random_fun():
 # -----------------------------------------------------------------------------
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 def get_daily_challenge_for_user(user: User):
     """Return the first unsolved challenge for the user (simple baseline)."""
@@ -163,15 +164,15 @@ def contact():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip()
-        message = request.form.get("message", "").strip()
+        body = request.form.get("message", "").strip()
 
-        if not (name and email and message):
+        if not (name and email and body):
             flash(("contact", "Please fill out all fields."))  # stays on contact page
             return redirect(url_for("contact"))
 
         # persist to DB
-        cm = ContactMessage(name=name, email=email, message=message)
-        db.session.add(cm)
+        msg = Message(name=name, email=email, body=body)
+        db.session.add(msg)
         db.session.commit()
 
         # show success only on this page
@@ -332,20 +333,169 @@ def download_challenge_csv_example():
     )
 
 # ---- Admin: Contact
-class ContactMessage(db.Model):
+class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(255), nullable=False)
-    message = db.Column(db.Text, nullable=False)
+    body = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    deleted_at = db.Column(db.DateTime, nullable=True)
+
+
+def _admin_message_query(status: str, search: str):
+    query = Message.query.filter(Message.deleted_at.is_(None))
+    if status == "read":
+        query = query.filter(Message.is_read.is_(True))
+    elif status == "unread":
+        query = query.filter(Message.is_read.is_(False))
+    if search:
+        like = f"%{search.lower()}%"
+        query = query.filter(
+            or_(
+                func.lower(Message.email).like(like),
+                func.lower(Message.body).like(like),
+            )
+        )
+    return query
+
+
+def _redirect_to_next(next_url: str):
+    if next_url:
+        return redirect(next_url)
+    return redirect(url_for("admin_messages"))
+
 
 @app.route("/admin/messages")
 @login_required
 def admin_messages():
-    if not current_user.is_admin:
+    if not admin_required():
         abort(403)
-    msgs = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
-    return render_template("admin_messages.html", messages=msgs)
+
+    status = request.args.get("status", "all").lower()
+    if status not in {"all", "read", "unread"}:
+        status = "all"
+    search = request.args.get("search", "").strip()
+    page = request.args.get("page", 1, type=int)
+
+    query = _admin_message_query(status, search)
+    pagination = query.order_by(Message.created_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+
+    export_url = url_for("admin_messages_export", status=status, search=search)
+    current_url = request.full_path.rstrip("?")
+
+    return render_template(
+        "admin_messages.html",
+        messages=pagination.items,
+        pagination=pagination,
+        status=status,
+        search=search,
+        export_url=export_url,
+        current_url=current_url,
+    )
+
+
+@app.post("/admin/messages/<int:message_id>/toggle_read")
+@login_required
+def admin_toggle_message(message_id):
+    if not admin_required():
+        abort(403)
+    msg = Message.query.get_or_404(message_id)
+    if msg.deleted_at is None:
+        msg.is_read = not msg.is_read
+        db.session.commit()
+    next_url = request.form.get("next")
+    return _redirect_to_next(next_url)
+
+
+@app.post("/admin/messages/<int:message_id>/delete")
+@login_required
+def admin_delete_message(message_id):
+    if not admin_required():
+        abort(403)
+    msg = Message.query.get_or_404(message_id)
+    if msg.deleted_at is None:
+        msg.deleted_at = datetime.now(timezone.utc)
+        db.session.commit()
+    next_url = request.form.get("next")
+    return _redirect_to_next(next_url)
+
+
+@app.post("/admin/messages/bulk")
+@login_required
+def admin_bulk_messages():
+    if not admin_required():
+        abort(403)
+    action = request.form.get("bulk_action")
+    ids = [int(i) for i in request.form.getlist("message_ids") if i.isdigit()]
+    next_url = request.form.get("next")
+
+    if not ids or action not in {"mark_read", "mark_unread", "delete"}:
+        flash("Select messages and an action before submitting.")
+        return _redirect_to_next(next_url)
+
+    messages = Message.query.filter(
+        Message.id.in_(ids), Message.deleted_at.is_(None)
+    ).all()
+
+    if not messages:
+        flash("No messages matched your selection.")
+        return _redirect_to_next(next_url)
+
+    if action == "mark_read":
+        for msg in messages:
+            msg.is_read = True
+    elif action == "mark_unread":
+        for msg in messages:
+            msg.is_read = False
+    elif action == "delete":
+        now = datetime.now(timezone.utc)
+        for msg in messages:
+            msg.deleted_at = now
+
+    db.session.commit()
+    flash("Bulk action completed.")
+    return _redirect_to_next(next_url)
+
+
+@app.route("/admin/messages/export.csv")
+@login_required
+def admin_messages_export():
+    if not admin_required():
+        abort(403)
+
+    status = request.args.get("status", "all").lower()
+    if status not in {"all", "read", "unread"}:
+        status = "all"
+    search = request.args.get("search", "").strip()
+
+    query = _admin_message_query(status, search)
+    messages = query.order_by(Message.created_at.desc()).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Name", "Email", "Body", "Created At", "Status"])
+    for msg in messages:
+        writer.writerow(
+            [
+                msg.id,
+                msg.name,
+                msg.email,
+                msg.body,
+                msg.created_at.isoformat(),
+                "Read" if msg.is_read else "Unread",
+            ]
+        )
+
+    csv_data = output.getvalue()
+    output.close()
+    headers = {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": "attachment; filename=messages_export.csv",
+    }
+    return Response(csv_data, headers=headers)
 
 # ---- Public API for Home page
 @app.route("/api/fun")

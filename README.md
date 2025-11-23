@@ -34,7 +34,7 @@ A small, good-looking web app for bite-sized coding challenges. Users earn XP an
 * 🏆 **Leaderboard** — Sorted by XP, then streak.
 * 🛠️ **Admin** — Add single challenge or **bulk-import via CSV**.
 * 🎉 **Home “Did you know? / Today’s joke”** — Random item from CSV; “Show another” via `/api/fun`.
-* 📬 **Contact** — Stores submissions, shows scoped success message, and surfaces entries in an admin inbox.
+* 📬 **Contact** — Stores submissions, shows scoped success message, and surfaces entries in a sortable, filterable admin inbox with bulk actions and CSV export.
 * 💅 **Nice UI** — Glassmorphism styling with a minimal theme; mobile-friendly.
 
 ---
@@ -53,7 +53,8 @@ A small, good-looking web app for bite-sized coding challenges. Users earn XP an
 | Admin: New Challenge | `/admin/challenge/new`          | Requires admin                                                  |
 | Admin: Import CSV    | `/admin/challenges/import`      | Requires admin                                                  |
 | Admin: CSV Example   | `/admin/challenges/example.csv` | Download sample                                                 |
-| Admin: Contact Messages   | `/admin/messages` | Requires admin; review contact form submissions                 |
+| Admin: Contact Messages   | `/admin/messages` | Requires admin; review contact form submissions (filters, bulk actions) |
+| Admin: Contact Export     | `/admin/messages/export.csv` | Requires admin; CSV export honoring current filters             |
 | API: Fun Item        | `/api/fun`                      | Returns `{type, text}` JSON                                     |
 
 ---
@@ -134,17 +135,23 @@ DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/dbname
 │   │   └── hero.jpg
 │   └── js/
 │       └── templatemo-glossy-touch.js
-└── templates/
-    ├── base.html
-    ├── index.html
-    ├── about.html
-    ├── contact.html
-    ├── login.html
-    ├── signup.html
-    ├── dashboard.html
-    ├── leaderboard.html
-    ├── admin_add_challenge.html
-    └── admin_import_challenges.html
+├── templates/
+│   ├── base.html
+│   ├── index.html
+│   ├── about.html
+│   ├── contact.html
+│   ├── login.html
+│   ├── signup.html
+│   ├── dashboard.html
+│   ├── leaderboard.html
+│   ├── admin_add_challenge.html
+│   ├── admin_import_challenges.html
+│   └── admin_messages.html      # admin inbox for contact submissions
+└── tests/
+    ├── test_admin_messages.py
+    ├── test_auth.py
+    ├── test_contact.py
+    └── test_flask_app.py
 ```
 
 ---
@@ -171,9 +178,9 @@ DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/dbname
 
 * `id`, `text`
 
-**ContactMessage**
+**Message**
 
-* `id`, `name`, `email`, `message`, `created_at`
+* `id`, `name`, `email`, `body`, `created_at`, `is_read` (bool), `deleted_at` (nullable)
 
 ---
 
@@ -184,7 +191,7 @@ On the first run the app seeds:
 * **Admin user** — `username=admin`, `password=admin123`
 * One starter challenge and one starter joke.
 
-Contact form submissions persist to the database; admins can browse them at `/admin/messages`.
+Contact form submissions persist to the database; admins can browse them at `/admin/messages`, filter by status or search text, toggle read/unread, bulk mark read/delete, and export the current view to CSV.
 
 To change the admin password later:
 
