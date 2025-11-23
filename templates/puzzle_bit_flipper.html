@@ -92,7 +92,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show 'Next Level' button if applicable
         const nextLevel = {{ level + 1 }};
         if (nextLevel <= {{ total_levels }}) {
-          document.getElementById('completion-actions').innerHTML = `<div><a href="{{ url_for('puzzle_bit_flipper', level_num=level + 1) }}" class="btn">Next Level &rarr;</a></div>`;
+          const completionDiv = document.getElementById('completion-actions');
+          const nextLevelDiv = document.createElement('div');
+          nextLevelDiv.innerHTML = `<a href="{{ url_for('puzzle_bit_flipper', level_num=level + 1) }}" class="btn">Next Level &rarr;</a>`;
+          completionDiv.appendChild(nextLevelDiv);
         }
       }
     } else {
