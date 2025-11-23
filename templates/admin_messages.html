@@ -1,25 +1,91 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="glass">
-  <h2>Contact Messages</h2>
+  <h2>Admin Inbox</h2>
+
+  <form method="get" class="filters" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+    <label>
+      Status
+      <select name="status" onchange="this.form.submit()">
+        <option value="all" {{ 'selected' if status == 'all' else '' }}>All</option>
+        <option value="unread" {{ 'selected' if status == 'unread' else '' }}>Unread</option>
+        <option value="read" {{ 'selected' if status == 'read' else '' }}>Read</option>
+      </select>
+    </label>
+    <label style="flex:1; min-width: 200px;">
+      Search
+      <input type="text" name="search" placeholder="Search email or message" value="{{ search }}" />
+    </label>
+    <button type="submit" class="btn">Apply</button>
+    <a class="btn" href="{{ export_url }}">Export CSV</a>
+  </form>
+
   {% if messages %}
-    <table class="table">
-      <thead>
-        <tr><th>When</th><th>Name</th><th>Email</th><th>Message</th></tr>
-      </thead>
-      <tbody>
-      {% for m in messages %}
-        <tr>
-          <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-          <td>{{ m.name }}</td>
-          <td><a href="mailto:{{ m.email }}">{{ m.email }}</a></td>
-          <td style="white-space:pre-wrap">{{ m.message }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  <form method="post" action="{{ url_for('admin_bulk_messages') }}">
+    <input type="hidden" name="next" value="{{ current_url }}">
+    <div class="bulk-actions" style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+      <button type="submit" name="bulk_action" value="mark_read" class="btn">Mark Read</button>
+      <button type="submit" name="bulk_action" value="mark_unread" class="btn">Mark Unread</button>
+      <button type="submit" name="bulk_action" value="delete" class="btn" onclick="return confirm('Delete selected messages?')">Delete</button>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th><input type="checkbox" onclick="document.querySelectorAll('.message-checkbox').forEach(cb => cb.checked = this.checked)"></th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Snippet</th>
+            <th>Received</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for m in messages %}
+          <tr{% if not m.is_read %} style="background: rgba(255, 255, 255, 0.05);"{% endif %}>
+            <td><input type="checkbox" name="message_ids" value="{{ m.id }}" class="message-checkbox"></td>
+            <td>{{ m.name }}</td>
+            <td><a href="mailto:{{ m.email }}">{{ m.email }}</a></td>
+            <td>
+              <details>
+                <summary>{{ m.body[:120] ~ ('…' if m.body|length > 120 else '') }}</summary>
+                <div style="white-space: pre-wrap; margin-top: 0.5rem;">{{ m.body }}</div>
+              </details>
+            </td>
+            <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ 'Read' if m.is_read else 'Unread' }}</td>
+            <td style="display:flex; flex-direction: column; gap: 0.25rem;">
+              <a class="btn" href="mailto:{{ m.email }}?subject=Re:%20SyntaxSnacks">Reply</a>
+              <form method="post" action="{{ url_for('admin_toggle_message', message_id=m.id) }}" class="inline-form">
+                <input type="hidden" name="next" value="{{ current_url }}">
+                <button type="submit" class="btn">{{ 'Mark Unread' if m.is_read else 'Mark Read' }}</button>
+              </form>
+              <form method="post" action="{{ url_for('admin_delete_message', message_id=m.id) }}" class="inline-form" onsubmit="return confirm('Delete this message?')">
+                <input type="hidden" name="next" value="{{ current_url }}">
+                <button type="submit" class="btn">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+
+  {% if pagination.pages > 1 %}
+    <div class="pagination" style="display:flex; gap:1rem; align-items:center; justify-content:center; margin-top:1rem;">
+      {% if pagination.has_prev %}
+        <a class="btn" href="{{ url_for('admin_messages', page=pagination.prev_num, status=status, search=search) }}">&laquo; Previous</a>
+      {% endif %}
+      <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+      {% if pagination.has_next %}
+        <a class="btn" href="{{ url_for('admin_messages', page=pagination.next_num, status=status, search=search) }}">Next &raquo;</a>
+      {% endif %}
+    </div>
+  {% endif %}
   {% else %}
-    <p>No messages yet.</p>
+    <p>No messages found.</p>
   {% endif %}
 </div>
 {% endblock %}
