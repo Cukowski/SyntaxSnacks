@@ -26,3 +26,5 @@ instance/
 
 # Database
 app.db
+app.db-shm
+app.db
