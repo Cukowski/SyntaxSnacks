@@ -37,6 +37,7 @@
 
           {% if current_user.is_authenticated %}
             {% if current_user.is_admin %}
+              <a href="{{ url_for('admin_users') }}">Users</a>
               <a href="{{ url_for('admin_add_challenge') }}">Admin</a>
               <a href="{{ url_for('admin_messages') }}">Inbox</a>
             {% endif %}

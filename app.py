@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, date, timedelta, timezone
+import secrets
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask, render_template, request, redirect, url_for, flash, Response
 from flask_sqlalchemy import SQLAlchemy
@@ -53,6 +54,14 @@ login_manager.login_view = "login"
 def inject_now():
     return {"now": datetime.utcnow}
 
+
+@app.before_request
+def enforce_active_account():
+    if current_user.is_authenticated and not current_user.active:
+        logout_user()
+        flash("Your account has been deactivated. Contact an admin to restore access.")
+        return redirect(url_for("login"))
+
 # -----------------------------------------------------------------------------
 # Models
 # -----------------------------------------------------------------------------
@@ -61,10 +70,13 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True)
     password_hash = db.Column(db.String(200))
+    active = db.Column(db.Boolean, default=True, nullable=False)
     xp = db.Column(db.Integer, default=0)
     streak = db.Column(db.Integer, default=0)
+    last_login = db.Column(db.DateTime, nullable=True)
     last_active_date = db.Column(db.Date)
     is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 class Challenge(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -109,6 +121,15 @@ class PuzzleCompletion(db.Model):
     puzzle_name = db.Column(db.String(80), nullable=False) # e.g., "bit_flipper_lvl_1"
     completed_at = db.Column(db.DateTime, default=datetime.utcnow)
     __table_args__ = (db.UniqueConstraint('user_id', 'puzzle_name'),)
+
+
+class AuditLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    actor_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    target_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    action = db.Column(db.String(80), nullable=False)
+    meta = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 # -----------------------------------------------------------------------------
 # CSV jokes/facts (Home page)
@@ -205,6 +226,17 @@ def check_and_complete_dungeon(user: User, challenge: Challenge):
 def admin_required():
     return current_user.is_authenticated and current_user.is_admin
 
+
+def add_audit_log(actor_user_id: int, target_user_id: int, action: str, meta=None):
+    """Queue an audit log row (commit at caller)."""
+    log = AuditLog(
+        actor_user_id=actor_user_id,
+        target_user_id=target_user_id,
+        action=action,
+        meta=meta or {},
+    )
+    db.session.add(log)
+
 # -----------------------------------------------------------------------------
 # Routes
 # -----------------------------------------------------------------------------
@@ -245,6 +277,11 @@ def login():
         password = request.form.get("password", "")
         user = User.query.filter_by(username=username).first()
         if user and check_password_hash(user.password_hash, password):
+            if not user.active:
+                flash("This account is deactivated. Contact an admin to restore access.")
+                return redirect(url_for("login"))
+            user.last_login = datetime.now(timezone.utc)
+            db.session.commit()
             login_user(user, remember=True)
             return redirect(url_for("dashboard"))
         flash("Invalid credentials.")
@@ -369,6 +406,161 @@ def dungeon_view(dungeon_id):
 # ---- Puzzles & Mini-Games
 # Registered via puzzles.routes to keep app.py lean.
 register_puzzle_routes(app, db, PuzzleCompletion)
+
+# ---- Admin: Users
+def _guard_admin():
+    if not admin_required():
+        abort(403)
+
+
+def _parse_int_or_none(raw):
+    if raw is None or str(raw).strip() == "":
+        return 0
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+@app.route("/admin/users")
+@login_required
+def admin_users():
+    _guard_admin()
+    search = request.args.get("search", "").strip()
+    is_admin_filter = request.args.get("is_admin", "all")
+    active_filter = request.args.get("active", "all")
+    page = request.args.get("page", 1, type=int)
+
+    query = User.query
+    if search:
+        like = f"%{search.lower()}%"
+        query = query.filter(
+            or_(
+                func.lower(User.username).like(like),
+                func.lower(User.email).like(like),
+            )
+        )
+
+    if is_admin_filter == "admins":
+        query = query.filter(User.is_admin.is_(True))
+    elif is_admin_filter == "users":
+        query = query.filter(User.is_admin.is_(False))
+
+    if active_filter == "active":
+        query = query.filter(User.active.is_(True))
+    elif active_filter == "inactive":
+        query = query.filter(User.active.is_(False))
+
+    pagination = query.order_by(User.created_at.desc(), User.id.desc()).paginate(
+        page=page, per_page=25, error_out=False
+    )
+    return render_template(
+        "admin/users.html",
+        users=pagination.items,
+        pagination=pagination,
+        search=search,
+        is_admin_filter=is_admin_filter,
+        active_filter=active_filter,
+    )
+
+
+@app.route("/admin/users/<int:user_id>")
+@login_required
+def admin_user_detail(user_id):
+    _guard_admin()
+    user = User.query.get_or_404(user_id)
+    solves_count = Submission.query.filter_by(user_id=user.id).count()
+    logs = (
+        AuditLog.query.filter_by(target_user_id=user.id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return render_template(
+        "admin/user_detail.html",
+        user=user,
+        solves_count=solves_count,
+        logs=logs,
+    )
+
+
+@app.post("/admin/users/<int:user_id>/toggle_active")
+@login_required
+def admin_toggle_user_active(user_id):
+    _guard_admin()
+    user = User.query.get_or_404(user_id)
+    user.active = not user.active
+    add_audit_log(
+        current_user.id,
+        user.id,
+        "toggle_active",
+        {"active": user.active},
+    )
+    db.session.commit()
+    flash(f"User {user.username} is now {'active' if user.active else 'deactivated'}.")
+    return redirect(url_for("admin_user_detail", user_id=user.id))
+
+
+@app.post("/admin/users/<int:user_id>/toggle_admin")
+@login_required
+def admin_toggle_user_admin(user_id):
+    _guard_admin()
+    user = User.query.get_or_404(user_id)
+    user.is_admin = not user.is_admin
+    add_audit_log(
+        current_user.id,
+        user.id,
+        "toggle_is_admin",
+        {"is_admin": user.is_admin},
+    )
+    db.session.commit()
+    flash(f"Updated admin status for {user.username}.")
+    return redirect(url_for("admin_user_detail", user_id=user.id))
+
+
+@app.post("/admin/users/<int:user_id>/reset_password")
+@login_required
+def admin_reset_user_password(user_id):
+    _guard_admin()
+    user = User.query.get_or_404(user_id)
+    new_pw = secrets.token_urlsafe(8)
+    user.password_hash = generate_password_hash(new_pw)
+    add_audit_log(
+        current_user.id,
+        user.id,
+        "reset_password",
+        {"generated": True},
+    )
+    db.session.commit()
+    flash(f"Temporary password for {user.username}: {new_pw}")
+    return redirect(url_for("admin_user_detail", user_id=user.id))
+
+
+@app.post("/admin/users/<int:user_id>/adjust_stats")
+@login_required
+def admin_adjust_user_stats(user_id):
+    _guard_admin()
+    user = User.query.get_or_404(user_id)
+    dx = _parse_int_or_none(request.form.get("delta_xp"))
+    ds = _parse_int_or_none(request.form.get("delta_streak"))
+    reason = (request.form.get("reason") or "").strip()
+
+    if dx is None or ds is None:
+        flash("XP and streak adjustments must be numbers (use 0 for no change).")
+        return redirect(url_for("admin_user_detail", user_id=user.id))
+
+    user.xp = max(0, (user.xp or 0) + dx)
+    user.streak = max(0, (user.streak or 0) + ds)
+    add_audit_log(
+        current_user.id,
+        user.id,
+        "adjust_stats",
+        {"delta_xp": dx, "delta_streak": ds, "reason": reason},
+    )
+    db.session.commit()
+    flash("Stats updated.")
+    return redirect(url_for("admin_user_detail", user_id=user.id))
+
 
 # ---- Admin: add single challenge
 @app.route("/admin/challenge/new", methods=["GET", "POST"])
@@ -626,11 +818,31 @@ def admin_messages_export():
 def api_fun():
     return random_fun()
 
+
+def _ensure_user_schema():
+    """Lightweight, SQLite-friendly migration for newly added User columns."""
+    with db.engine.begin() as conn:
+        cols = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(user);")
+        }
+        if "active" not in cols:
+            conn.exec_driver_sql("ALTER TABLE user ADD COLUMN active BOOLEAN DEFAULT 1")
+        if "last_login" not in cols:
+            conn.exec_driver_sql("ALTER TABLE user ADD COLUMN last_login DATETIME")
+        if "created_at" not in cols:
+            conn.exec_driver_sql("ALTER TABLE user ADD COLUMN created_at DATETIME")
+            conn.exec_driver_sql(
+                "UPDATE user SET created_at = datetime('now') WHERE created_at IS NULL"
+            )
+
+
 # -----------------------------------------------------------------------------
 # Seed
 # -----------------------------------------------------------------------------
 def seed_data():
     db.create_all()
+    _ensure_user_schema()
     # Enable WAL for better concurrency (SQLite)
     with db.engine.connect() as conn:
         conn.exec_driver_sql("PRAGMA journal_mode=WAL;")

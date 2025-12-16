@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="glass">
+  <h2>User: {{ user.username }}</h2>
+  {% if not user.active %}
+    <div class="flash" style="background: rgba(255, 99, 71, 0.15); border: 1px solid rgba(255,99,71,0.5); color: #ffd7d1;">
+      This account is deactivated and cannot log in.
+    </div>
+  {% endif %}
+
+  <div class="grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:1rem; margin-top:1rem;">
+    <div class="card">
+      <h4>Profile</h4>
+      <p><strong>Email:</strong> {{ user.email or '—' }}</p>
+      <p><strong>Role:</strong> {{ 'Admin' if user.is_admin else 'User' }}</p>
+      <p><strong>Status:</strong> {{ 'Active' if user.active else 'Inactive' }}</p>
+      <p><strong>Signup:</strong> {{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '—' }}</p>
+      <p><strong>Last login:</strong> {{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}</p>
+      <p><strong>Last active day:</strong> {{ user.last_active_date or '—' }}</p>
+    </div>
+    <div class="card">
+      <h4>Progress</h4>
+      <p><strong>XP:</strong> {{ user.xp }}</p>
+      <p><strong>Streak:</strong> {{ user.streak }}</p>
+      <p><strong>Solves:</strong> {{ solves_count }}</p>
+    </div>
+    <div class="card">
+      <h4>Quick Actions</h4>
+      <form method="post" action="{{ url_for('admin_toggle_user_active', user_id=user.id) }}" style="margin-bottom:0.5rem;">
+        <button type="submit" class="btn" onclick="return confirm('Toggle active status for {{ user.username }}?')">
+          {{ 'Deactivate' if user.active else 'Activate' }}
+        </button>
+      </form>
+      <form method="post" action="{{ url_for('admin_toggle_user_admin', user_id=user.id) }}" style="margin-bottom:0.5rem;">
+        <button type="submit" class="btn" onclick="return confirm('Toggle admin role for {{ user.username }}?')">
+          {{ 'Remove admin' if user.is_admin else 'Make admin' }}
+        </button>
+      </form>
+      <form method="post" action="{{ url_for('admin_reset_user_password', user_id=user.id) }}" onsubmit="return confirm('Reset password and show a temporary one-time password?');">
+        <button type="submit" class="btn">Reset password</button>
+      </form>
+    </div>
+    <div class="card">
+      <h4>Adjust XP / Streak</h4>
+      <form method="post" action="{{ url_for('admin_adjust_user_stats', user_id=user.id) }}" class="stacked" style="display:flex; flex-direction:column; gap:0.5rem;">
+        <label>XP delta <input type="number" name="delta_xp" value="0" /></label>
+        <label>Streak delta <input type="number" name="delta_streak" value="0" /></label>
+        <label>Reason <input type="text" name="reason" placeholder="Reason for adjustment" /></label>
+        <button type="submit" class="btn">Apply changes</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1rem;">
+    <h4>Audit log (recent)</h4>
+    {% if logs %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Action</th>
+              <th>Performed by</th>
+              <th>Meta</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for log in logs %}
+            <tr>
+              <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td>{{ log.action }}</td>
+              <td>#{{ log.actor_user_id }}</td>
+              <td><code style="font-size: 0.9em;">{{ log.meta|tojson }}</code></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p>No admin actions recorded for this user yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

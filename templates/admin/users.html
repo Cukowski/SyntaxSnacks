@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="glass">
+  <h2>User Management</h2>
+  <form method="get" class="filters" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+    <label style="flex:1; min-width: 220px;">
+      Search
+      <input type="text" name="search" placeholder="username or email" value="{{ search }}" />
+    </label>
+    <label>
+      Role
+      <select name="is_admin" onchange="this.form.submit()">
+        <option value="all" {{ 'selected' if is_admin_filter == 'all' else '' }}>All</option>
+        <option value="admins" {{ 'selected' if is_admin_filter == 'admins' else '' }}>Admins</option>
+        <option value="users" {{ 'selected' if is_admin_filter == 'users' else '' }}>Users</option>
+      </select>
+    </label>
+    <label>
+      Status
+      <select name="active" onchange="this.form.submit()">
+        <option value="all" {{ 'selected' if active_filter == 'all' else '' }}>All</option>
+        <option value="active" {{ 'selected' if active_filter == 'active' else '' }}>Active</option>
+        <option value="inactive" {{ 'selected' if active_filter == 'inactive' else '' }}>Inactive</option>
+      </select>
+    </label>
+    <button type="submit" class="btn">Apply</button>
+  </form>
+
+  {% if users %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>XP</th>
+            <th>Streak</th>
+            <th>Last Login</th>
+            <th>Signup</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for u in users %}
+          <tr>
+            <td>{{ u.username }}</td>
+            <td>{{ u.email or '—' }}</td>
+            <td>{{ 'Admin' if u.is_admin else 'User' }}</td>
+            <td>{{ 'Active' if u.active else 'Inactive' }}</td>
+            <td>{{ u.xp }}</td>
+            <td>{{ u.streak }}</td>
+            <td>{{ u.last_login.strftime('%Y-%m-%d %H:%M') if u.last_login else 'Never' }}</td>
+            <td>{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '—' }}</td>
+            <td><a class="btn" href="{{ url_for('admin_user_detail', user_id=u.id) }}">Details</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if pagination.pages > 1 %}
+      <div class="pagination" style="display:flex; gap:1rem; align-items:center; justify-content:center; margin-top:1rem;">
+        {% if pagination.has_prev %}
+          <a class="btn" href="{{ url_for('admin_users', page=pagination.prev_num, search=search, is_admin=is_admin_filter, active=active_filter) }}">&laquo; Previous</a>
+        {% endif %}
+        <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        {% if pagination.has_next %}
+          <a class="btn" href="{{ url_for('admin_users', page=pagination.next_num, search=search, is_admin=is_admin_filter, active=active_filter) }}">Next &raquo;</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% else %}
+    <p>No users found.</p>
+  {% endif %}
+</div>
+{% endblock %}
