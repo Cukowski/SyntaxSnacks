@@ -73,6 +73,7 @@ For detailed information on specific topics, please see the documents below.
 *   [**Admin & Content**](docs/admin.md): Guide to admin features, user seeding, and content management.
 *   [**Customization**](docs/customization.md): How to modify the theme, layout, and application logic.
 *   [**Deployment**](docs/deployment.md): Instructions for deploying the application to a cloud server.
+*   [**Mac Server Script**](docs/deployment-script-mac-server.md): Automated runner script for Mac server deployment.
 *   [**Data Model**](docs/data-model.md): An overview of the database schema.
 *   [**API Reference**](docs/api.md): Details on the available API endpoints.
 
