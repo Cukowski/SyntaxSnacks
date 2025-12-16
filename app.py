@@ -19,6 +19,14 @@ from werkzeug.exceptions import abort
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 load_dotenv()
 
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    """Interpret typical truthy strings from environment variables."""
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "dev-secret")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -32,7 +40,8 @@ db = SQLAlchemy(app)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=30)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = True        # client sees HTTPS (Cloudflare)
+# Default to secure cookies only when explicitly requested so local dev/tests keep working.
+app.config['SESSION_COOKIE_SECURE'] = _env_flag("SESSION_COOKIE_SECURE", default=False)
 app.config['PREFERRED_URL_SCHEME'] = 'https'
 
 login_manager = LoginManager(app)
@@ -562,7 +571,7 @@ class Message(db.Model):
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(255), nullable=False)
     body = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     is_read = db.Column(db.Boolean, default=False, nullable=False)
     deleted_at = db.Column(db.DateTime, nullable=True)
 
