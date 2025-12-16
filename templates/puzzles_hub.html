@@ -28,6 +28,17 @@
         </div>
       </a>
     </div>
+
+    <!-- Regex Rescue Puzzle -->
+    <div class="dungeon-island {{ 'cleared' if 'regex_rescue_lvl_1' in completed_puzzles else '' }}">
+      <a href="{{ url_for('puzzle_regex_rescue', level_num=1) }}" class="island-link">
+        <div class="island-content">
+          <h4>Regex Rescue</h4>
+          <p>Master Regular Expressions by matching patterns in text. Find the needle in the haystack!</p>
+          <div class="island-status">{{ '✅ Completed' if 'regex_rescue_lvl_1' in completed_puzzles else '+5 XP Reward' }}</div>
+        </div>
+      </a>
+    </div>
   </div>
 </div>
 {% endblock %}

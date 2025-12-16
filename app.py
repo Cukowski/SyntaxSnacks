@@ -461,6 +461,49 @@ def puzzle_selector_sleuth(level_num):
     })
     return render_template("puzzle_selector_sleuth.html", **level_data)
 
+REGEX_RESCUE_LEVELS = [
+    {
+        "level": 1,
+        "title": "Regex Rescue: The Literal",
+        "instruction": "Write a regex to match the exact word 'code'.",
+        "test_string": "I love to code in Python.",
+        "expected_matches": ["code"]
+    },
+    {
+        "level": 2,
+        "title": "Regex Rescue: Digits",
+        "instruction": "Match all numbers in the text using the digit shorthand.",
+        "test_string": "Order 66 was executed at 14:00.",
+        "expected_matches": ["66", "14", "00"]
+    },
+    {
+        "level": 3,
+        "title": "Regex Rescue: Character Classes",
+        "instruction": "Match the words 'cat', 'bat', and 'hat'.",
+        "test_string": "The cat and bat sat on a hat.",
+        "expected_matches": ["cat", "bat", "hat"]
+    }
+]
+
+@app.route("/puzzles/regex-rescue/<int:level_num>")
+@login_required
+def puzzle_regex_rescue(level_num):
+    """The Regex Rescue mini-game."""
+    if not (1 <= level_num <= len(REGEX_RESCUE_LEVELS)):
+        abort(404)
+
+    level_data = REGEX_RESCUE_LEVELS[level_num - 1].copy()
+    puzzle_name = f"regex_rescue_lvl_{level_num}"
+    is_completed = PuzzleCompletion.query.filter_by(user_id=current_user.id, puzzle_name=puzzle_name).first() is not None
+
+    level_data.update({
+        "puzzle_name": puzzle_name,
+        "is_completed": is_completed,
+        "xp_reward": 5,
+        "total_levels": len(REGEX_RESCUE_LEVELS)
+    })
+    return render_template("puzzle_regex_rescue.html", **level_data)
+
 @app.route("/puzzles/complete", methods=["POST"])
 @login_required
 def complete_puzzle():

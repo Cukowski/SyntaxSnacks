@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container fade-in">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>{{ title }}</h2>
+                <span class="badge bg-secondary">Level {{ level }} / {{ total_levels }}</span>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <p class="lead">{{ instruction }}</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Test String:</label>
+                        <div class="p-3 bg-light border rounded font-monospace" id="display-area" style="font-size: 1.1em;">
+                            {{ test_string }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="regex-input" class="form-label">Your Regex Pattern:</label>
+                        <div class="input-group">
+                            <span class="input-group-text">/</span>
+                            <input type="text" id="regex-input" class="form-control font-monospace" placeholder="e.g. \d+" autocomplete="off">
+                            <span class="input-group-text">/g</span>
+                        </div>
+                        <div class="form-text">Do not include the surrounding slashes. The global flag <code>g</code> is enabled.</div>
+                    </div>
+
+                    <div id="feedback" class="alert d-none"></div>
+
+                    <button id="check-btn" class="btn btn-primary">Check Match</button>
+                    
+                    {% if level < total_levels %}
+                    <a href="{{ url_for('puzzle_regex_rescue', level_num=level+1) }}" id="next-btn" class="btn btn-success d-none">Next Level &rarr;</a>
+                    {% else %}
+                    <a href="{{ url_for('puzzles_hub') }}" id="next-btn" class="btn btn-success d-none">Back to Puzzles</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const expectedMatches = {{ expected_matches | tojson }};
+    const testString = {{ test_string | tojson }};
+    const puzzleName = {{ puzzle_name | tojson }};
+    const isCompleted = {{ is_completed | tojson }};
+
+    const input = document.getElementById('regex-input');
+    const checkBtn = document.getElementById('check-btn');
+    const feedback = document.getElementById('feedback');
+    const nextBtn = document.getElementById('next-btn');
+    const displayArea = document.getElementById('display-area');
+
+    function highlightMatches(regex) {
+        if (!regex) {
+            displayArea.textContent = testString;
+            return;
+        }
+        try {
+            // Simple highlighting logic
+            const highlighted = testString.replace(regex, match => `<mark>${match}</mark>`);
+            displayArea.innerHTML = highlighted;
+        } catch (e) {
+            // Invalid regex, ignore
+        }
+    }
+
+    checkBtn.addEventListener('click', () => {
+        feedback.classList.add('d-none');
+        feedback.classList.remove('alert-success', 'alert-danger');
+        
+        try {
+            const regex = new RegExp(input.value, 'g');
+            const matches = testString.match(regex) || [];
+            
+            // Compare matches with expected (order doesn't strictly matter for this simple check, but let's sort)
+            const sortedMatches = [...matches].sort();
+            const sortedExpected = [...expectedMatches].sort();
+            
+            const isCorrect = JSON.stringify(sortedMatches) === JSON.stringify(sortedExpected);
+
+            highlightMatches(regex);
+
+            if (isCorrect) {
+                feedback.textContent = "Correct! Pattern matched.";
+                feedback.classList.add('alert', 'alert-success', 'd-block');
+                feedback.classList.remove('d-none');
+                nextBtn.classList.remove('d-none');
+                checkBtn.classList.add('d-none');
+                input.disabled = true;
+
+                if (!isCompleted) {
+                    fetch("{{ url_for('complete_puzzle') }}", {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({ puzzle_name: puzzleName })
+                    });
+                }
+            } else {
+                feedback.textContent = `Not quite. Found: [${matches.join(', ')}] but expected: [${expectedMatches.join(', ')}]`;
+                feedback.classList.add('alert', 'alert-danger', 'd-block');
+                feedback.classList.remove('d-none');
+            }
+        } catch (e) {
+            feedback.textContent = "Invalid Regular Expression.";
+            feedback.classList.add('alert', 'alert-danger', 'd-block');
+            feedback.classList.remove('d-none');
+        }
+    });
+
+    // Optional: Live highlight as you type (careful with incomplete regex)
+    input.addEventListener('input', () => {
+        try {
+            const regex = new RegExp(input.value, 'g');
+            highlightMatches(regex);
+        } catch(e) {
+            // ignore invalid regex while typing
+        }
+    });
+</script>
+{% endblock %}
