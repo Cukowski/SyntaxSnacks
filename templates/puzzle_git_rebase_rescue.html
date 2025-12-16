@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .rebase-rescue { display: flex; flex-direction: column; gap: 16px; }
+  .rebase-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .rebase-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 16px; }
+  .commit-list { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; min-height: 320px; }
+  .commit-card { background: linear-gradient(135deg, rgba(92, 131, 247, 0.08), rgba(115, 223, 200, 0.08)); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px; margin-bottom: 10px; cursor: grab; position: relative; }
+  .commit-card:active { cursor: grabbing; }
+  .commit-card.dragging { opacity: 0.7; border-style: dashed; }
+  .commit-title { font-weight: 700; margin: 0 0 6px 0; }
+  .commit-meta { font-size: 0.85em; color: #c8d2ff; margin-bottom: 6px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.14); font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.02em; }
+  .required-merge { background: rgba(255, 199, 102, 0.16); border-color: rgba(255, 199, 102, 0.4); color: #ffd39c; }
+  .commit-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .commit-actions button { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 10px; border-radius: 8px; font-size: 0.85em; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+  .commit-actions button:hover { background: rgba(255,255,255,0.14); transform: translateY(-1px); }
+  .status { min-height: 32px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); white-space: pre-line; }
+  .status.success { border-color: rgba(77, 246, 178, 0.5); color: #65f2c0; background: rgba(77, 246, 178, 0.08); }
+  .status.error { border-color: rgba(255, 110, 110, 0.5); color: #ff9e9e; background: rgba(255, 110, 110, 0.08); }
+  .sidebar-box { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; }
+  .dependency-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .dependency-list li { background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.08); border-radius: 10px; padding: 8px 10px; }
+  .small { font-size: 0.9em; color: #cdd7ff; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+  .controls button { padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: #fff; cursor: pointer; transition: background 0.2s; }
+  .controls button:hover { background: rgba(255,255,255,0.12); }
+  .locked { opacity: 0.6; pointer-events: none; }
+</style>
+
+<div class="glass rebase-rescue">
+  <a href="{{ url_for('puzzles_hub') }}">&larr; Back to Puzzle Arcade</a>
+  <div class="rebase-header">
+    <div>
+      <h2 style="margin: 0;">{{ title }}</h2>
+      <p class="small" style="margin: 4px 0 0 0;">Level {{ level }}/{{ total_levels }} &mdash; {{ intro }}</p>
+    </div>
+    <div class="badge">+{{ xp_reward }} XP</div>
+  </div>
+
+  <div class="rebase-grid">
+    <div>
+      <p class="small" style="margin-bottom: 8px;">Drag commits to rebuild a clean history. Dependencies must appear earlier in the timeline. Use the power-ups on each card to squash or fixup into the commit above it.</p>
+      <div id="timeline" class="commit-list"></div>
+    </div>
+    <div class="sidebar-box">
+      <h4 style="margin-top: 0;">Runbook</h4>
+      <ul class="dependency-list" id="dependency-list"></ul>
+      <div style="margin-top: 10px;">
+        <div class="badge">Power-Ups</div>
+        <p class="small" style="margin: 6px 0;">Squash merges a card into the one above it (messages stay tidy). Fixup marks a quick follow-up that should travel with its parent.</p>
+      </div>
+      <div class="controls" style="margin-top: 10px;">
+        <button id="reset-btn">Reset</button>
+        <button id="check-btn">Check History</button>
+        {% if level < total_levels %}
+          <a id="next-level" href="{{ url_for('puzzle_git_rebase_rescue', level_num=level + 1) }}" class="btn locked">Next Level &rarr;</a>
+        {% else %}
+          <a id="next-level" href="{{ url_for('puzzles_hub') }}" class="btn locked">Back to Hub</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div id="status" class="status"></div>
+  <div id="completion-actions">
+    {% if is_completed %}
+      <p class="small" style="color: #65f2c0; font-weight: 600;">You already beat this level. Feel free to replay the sequence.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  const commits = {{ commits | tojson }};
+  const puzzleName = {{ puzzle_name | tojson }};
+  const isCompleted = {{ is_completed | tojson }};
+  const xpReward = {{ xp_reward }};
+  const level = {{ level }};
+  const totalLevels = {{ total_levels }};
+
+  const timeline = document.getElementById('timeline');
+  const dependencyList = document.getElementById('dependency-list');
+  const statusEl = document.getElementById('status');
+  const nextLevelLink = document.getElementById('next-level');
+  const checkBtn = document.getElementById('check-btn');
+  const resetBtn = document.getElementById('reset-btn');
+
+  let currentOrder = commits.map(c => c.id);
+  let mergeState = {}; // commitId -> { type, target }
+  let locked = isCompleted;
+  let hasWon = false;
+  let draggedCard = null;
+
+  const commitsById = Object.fromEntries(commits.map(c => [c.id, c]));
+
+  function setStatus(message, type = "") {
+    statusEl.textContent = message;
+    statusEl.className = `status ${type}`;
+  }
+
+  function renderDependencies() {
+    dependencyList.innerHTML = "";
+    commits.forEach(c => {
+      const li = document.createElement('li');
+      const deps = c.depends.length ? c.depends.join(", ") : "none";
+      const merge = c.required_merge ? `${c.required_merge.type} into ${c.required_merge.target}` : "optional";
+      li.innerHTML = `<strong>${c.title}</strong><br><span class="small">Depends on: ${deps}</span><br><span class="small">Merge rule: ${merge}</span>`;
+      dependencyList.appendChild(li);
+    });
+  }
+
+  function applyDragEvents(card) {
+    card.addEventListener('dragstart', () => {
+      if (locked) return;
+      draggedCard = card;
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      draggedCard = null;
+      syncOrderFromDOM();
+    });
+  }
+
+  function getDragAfterElement(container, y) {
+    const elements = [...container.querySelectorAll('.commit-card:not(.dragging)')];
+    return elements.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset, element: child };
+      }
+      return closest;
+    }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+  }
+
+  timeline.addEventListener('dragover', (e) => {
+    if (locked) return;
+    e.preventDefault();
+    const afterElement = getDragAfterElement(timeline, e.clientY);
+    if (!draggedCard) return;
+    if (afterElement == null) {
+      timeline.appendChild(draggedCard);
+    } else {
+      timeline.insertBefore(draggedCard, afterElement);
+    }
+  });
+
+  function syncOrderFromDOM() {
+    currentOrder = [...timeline.querySelectorAll('.commit-card')].map(el => el.dataset.commitId);
+  }
+
+  function applyMerge(commitId, type) {
+    if (locked) return;
+    const index = currentOrder.indexOf(commitId);
+    if (index <= 0) {
+      setStatus("Move the commit below something before using the power-up.", "error");
+      return;
+    }
+    const targetId = currentOrder[index - 1];
+    mergeState[commitId] = { type, target: targetId };
+    currentOrder.splice(index, 1);
+    renderTimeline();
+    setStatus(`${type === 'squash' ? 'Squashed' : 'Fixup'} "${commitsById[commitId].title}" into "${commitsById[targetId].title}".`, "success");
+  }
+
+  function renderTimeline() {
+    timeline.innerHTML = "";
+    timeline.classList.toggle('locked', locked);
+    currentOrder.forEach((id) => {
+      const c = commitsById[id];
+      const card = document.createElement('div');
+      card.className = `commit-card${locked ? ' locked' : ''}`;
+      card.draggable = !locked;
+      card.dataset.commitId = c.id;
+
+      const req = c.required_merge ? `<span class="badge required-merge">${c.required_merge.type} -> ${c.required_merge.target}</span>` : "";
+      const deps = c.depends.length ? c.depends.join(", ") : "none";
+      card.innerHTML = `
+        <div class="commit-title">${c.title}</div>
+        <div class="commit-meta">
+          <span class="badge">deps: ${deps}</span>
+          ${req}
+        </div>
+        <p class="small" style="margin: 4px 0 8px 0;">${c.details}</p>
+        <div class="commit-actions">
+          <button data-action="squash">Squash into above</button>
+          <button data-action="fixup">Fixup into above</button>
+        </div>
+      `;
+
+      card.querySelector('[data-action="squash"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        applyMerge(c.id, 'squash');
+      });
+      card.querySelector('[data-action="fixup"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        applyMerge(c.id, 'fixup');
+      });
+
+      applyDragEvents(card);
+      timeline.appendChild(card);
+    });
+  }
+
+  function positionOf(commitId) {
+    if (mergeState[commitId]) {
+      return positionOf(mergeState[commitId].target);
+    }
+    return currentOrder.indexOf(commitId);
+  }
+
+  function validate() {
+    const issues = [];
+    commits.forEach(c => {
+      const pos = positionOf(c.id);
+      if (pos === -1) {
+        issues.push(`"${c.title}" is missing from the history.`);
+        return;
+      }
+      c.depends.forEach(dep => {
+        const depPos = positionOf(dep);
+        if (depPos === -1) {
+          issues.push(`"${c.title}" needs "${commitsById[dep].title}" present.`);
+        } else if (depPos > pos) {
+          issues.push(`"${c.title}" must come after "${commitsById[dep].title}".`);
+        }
+      });
+      if (c.required_merge) {
+        const merge = mergeState[c.id];
+        if (!merge || merge.target !== c.required_merge.target || merge.type !== c.required_merge.type) {
+          issues.push(`"${c.title}" must ${c.required_merge.type} into "${commitsById[c.required_merge.target].title}".`);
+        }
+      }
+    });
+    return issues;
+  }
+
+  async function awardXp() {
+    try {
+      const res = await fetch("{{ url_for('complete_puzzle') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ puzzle_name: puzzleName })
+      });
+      if (!res.ok) throw new Error("Failed to award XP");
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  checkBtn.addEventListener('click', async () => {
+    if (locked) return;
+    const issues = validate();
+    if (issues.length) {
+      setStatus(`Tests failing:\n- ${issues.join("\n- ")}`, "error");
+      return;
+    }
+    locked = true;
+    hasWon = true;
+    setStatus(`History looks clean. Tests pass! +${xpReward} XP`, "success");
+    timeline.classList.add('locked');
+    if (nextLevelLink) {
+      nextLevelLink.classList.remove('locked');
+    }
+    if (!isCompleted) {
+      await awardXp();
+    }
+  });
+
+  resetBtn.addEventListener('click', () => {
+    mergeState = {};
+    currentOrder = commits.map(c => c.id);
+    locked = isCompleted;
+    hasWon = false;
+    renderTimeline();
+    timeline.classList.remove('locked');
+    setStatus("History reset.", "");
+  });
+
+  renderDependencies();
+  renderTimeline();
+  if (isCompleted && nextLevelLink) {
+    nextLevelLink.classList.remove('locked');
+  }
+</script>
+{% endblock %}

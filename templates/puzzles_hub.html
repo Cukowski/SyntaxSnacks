@@ -39,6 +39,17 @@
         </div>
       </a>
     </div>
+
+    <!-- Git Rebase Rescue Puzzle -->
+    <div class="dungeon-island {{ 'cleared' if 'git_rebase_rescue_lvl_1' in completed_puzzles else '' }}">
+      <a href="{{ url_for('puzzle_git_rebase_rescue', level_num=1) }}" class="island-link">
+        <div class="island-content">
+          <h4>Git Rebase Rescue</h4>
+          <p>Drag commits into a test-friendly history. Enforce dependency order and use squash/fixup to tidy the log.</p>
+          <div class="island-status">{{ '✅ Completed' if 'git_rebase_rescue_lvl_1' in completed_puzzles else '+5 XP Reward' }}</div>
+        </div>
+      </a>
+    </div>
   </div>
 </div>
 {% endblock %}
