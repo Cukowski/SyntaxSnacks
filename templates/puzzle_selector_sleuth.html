@@ -60,6 +60,18 @@
     font-size:0.85em;
     letter-spacing:0.02em;
   }
+  #completion-actions{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:flex-start;
+    margin-top: 12px !important;
+  }
+  #completion-actions .completion-message{
+    color: #45f0c8;
+    font-weight: bold;
+    margin:0;
+  }
 
   @media (max-width: 768px) {
     .selector-sleuth-grid { grid-template-columns: 1fr; }
@@ -82,9 +94,9 @@
       <input type="text" id="selector-input" placeholder="e.g., div .item" autocomplete="off" {% if is_completed %}disabled{% endif %}>
       <p class="hint-text">Type a CSS selector to highlight matching nodes in the preview.</p>
       <div id="feedback"></div>
-      <div id="completion-actions" style="margin-top: 10px;">
+      <div id="completion-actions">
         {% if is_completed %}
-          <p style="color: #45f0c8; font-weight: bold;">You have already completed this puzzle!</p>
+          <p class="completion-message">You have already completed this puzzle!</p>
           {% if level < total_levels %}
             <a href="{{ url_for('puzzle_selector_sleuth', level_num=level + 1) }}" class="btn">Next Level &rarr;</a>
           {% endif %}
