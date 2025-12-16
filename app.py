@@ -686,3 +686,10 @@ if __name__ == "__main__":
     with app.app_context():
         seed_data()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+else:
+    # When running under a WSGI server (e.g., Gunicorn on Render/Heroku), ensure the
+    # database schema exists and default seed data is present. This prevents runtime
+    # errors on freshly deployed environments where create_all() hasn't been invoked
+    # via the __main__ block above.
+    with app.app_context():
+        seed_data()
