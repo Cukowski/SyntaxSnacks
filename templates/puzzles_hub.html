@@ -18,6 +18,17 @@
       </a>
     </div>
 
+    <!-- Big-O Bistro Puzzle -->
+    <div class="dungeon-island {{ 'cleared' if 'big_o_bistro_lvl_1' in completed_puzzles else '' }}">
+      <a href="{{ url_for('puzzle_big_o_bistro', level_num=1) }}" class="island-link">
+        <div class="island-content">
+          <h4>Big-O Bistro</h4>
+          <p>Rescue slow kitchen scripts by choosing the right data structure, caching move, or sort strategy without breaking correctness.</p>
+          <div class="island-status">{{ '✅ Completed' if 'big_o_bistro_lvl_1' in completed_puzzles else '+5 XP Reward' }}</div>
+        </div>
+      </a>
+    </div>
+
     <!-- Selector Sleuth Puzzle -->
     <div class="dungeon-island {{ 'cleared' if 'selector_sleuth_lvl_1' in completed_puzzles else '' }}">
       <a href="{{ url_for('puzzle_selector_sleuth', level_num=1) }}" class="island-link">

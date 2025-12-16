@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .bistro-shell { display: grid; gap: 18px; }
+  .bistro-hero {
+    background: linear-gradient(135deg, rgba(70, 235, 200, 0.16), rgba(90, 140, 255, 0.14));
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+  }
+  .bistro-hero h2 { margin: 0; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    font-size: 0.9em;
+    color: #dff7ff;
+  }
+  .pill.accent { background: rgba(69, 240, 200, 0.14); border-color: rgba(69, 240, 200, 0.5); color: #c1fff1; }
+  .bistro-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; }
+  .panel {
+    background: rgba(12, 16, 26, 0.6);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .constraint-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .code-block {
+    margin-top: 8px;
+    background: #0c1220;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.95em;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .hidden-box { margin-top: 10px; border: 1px dashed rgba(255,255,255,0.16); border-radius: 10px; padding: 10px; }
+  .hidden-box h4 { margin: 0 0 6px 0; }
+  .hidden-box ul { margin: 0; padding-left: 18px; color: #cfe3ff; }
+  .options-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .option-card {
+    background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+  .option-card:hover { transform: translateY(-1px); border-color: rgba(69, 240, 200, 0.6); }
+  .option-card.active { box-shadow: 0 8px 30px rgba(0,0,0,0.25); border-color: rgba(69, 240, 200, 0.8); }
+  .option-top { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .option-card h4 { margin: 6px 0 4px 0; }
+  .option-card p { margin: 4px 0; color: #d6e8ff; }
+  .note { margin-top: 6px; font-size: 0.95em; color: #c0d9ff; }
+  .status {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04);
+    min-height: 32px;
+  }
+  .status.success { border-color: rgba(69, 240, 200, 0.7); color: #adffe8; background: rgba(69, 240, 200, 0.08); }
+  .status.error { border-color: rgba(255, 125, 125, 0.7); color: #ffc7c7; background: rgba(255, 125, 125, 0.12); }
+  .status.warning { border-color: rgba(255, 210, 130, 0.6); color: #ffe4b2; background: rgba(255, 210, 130, 0.12); }
+  .locked { opacity: 0.5; pointer-events: none; }
+  .completion-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  @media (max-width: 900px) { .bistro-grid { grid-template-columns: 1fr; } }
+</style>
+
+<div class="glass puzzle-shell">
+  <a href="{{ url_for('puzzles_hub') }}">&larr; Back to Puzzle Arcade</a>
+  <div class="bistro-shell">
+    <div class="bistro-hero">
+      <div>
+        <p class="pill accent" style="margin: 0 0 6px 0;">Level {{ level }}/{{ total_levels }} · +{{ xp_reward }} XP</p>
+        <h2>{{ title }}</h2>
+        <p style="margin: 6px 0 0 0;">Serve the fastest fix without breaking hidden requirements.</p>
+      </div>
+      <div class="pill">Status: <span id="status-pill">{{ 'Completed' if is_completed else 'Awaiting order' }}</span></div>
+    </div>
+
+    <div class="bistro-grid">
+      <div class="panel">
+        <p style="margin: 0;">{{ scenario }}</p>
+        <div class="constraint-row">
+          {% for key, val in constraints.items() %}
+            <span class="pill">{{ key }}: {{ val }}</span>
+          {% endfor %}
+        </div>
+        <div class="pill accent" style="margin-bottom: 8px;">Goal: {{ goal }}</div>
+        <div class="code-block">{{ function_snippet }}</div>
+        <div class="hidden-box">
+          <h4>Hidden Cases to Respect</h4>
+          <ul id="hidden-cases">
+            {% for case in hidden_cases %}
+              <li>{{ case }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p style="margin-top: 0; margin-bottom: 6px;">Pick the optimization to serve:</p>
+        <div class="options-grid" id="options-grid">
+          {% for opt in options %}
+          <div class="option-card {% if is_completed and best_option == opt.id %}active locked{% endif %}" data-option-id="{{ opt.id }}">
+            <div class="option-top">
+              <span class="pill accent">{{ opt.kind }}</span>
+              <span class="pill">Big-O: {{ opt.big_o }}</span>
+            </div>
+            <h4>{{ opt.label }}</h4>
+            <p class="claim">Claimed gain: {{ opt.speed_gain or 'n/a' }}</p>
+            <p class="note" data-note>Tap to reveal chef's feedback.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="status" id="status"></div>
+    <div class="completion-row">
+      {% if level < total_levels %}
+        <a id="next-level" href="{{ url_for('puzzle_big_o_bistro', level_num=level + 1) }}" class="btn {% if not is_completed %}locked{% endif %}">Next Level &rarr;</a>
+      {% else %}
+        <a id="next-level" href="{{ url_for('puzzles_hub') }}" class="btn {% if not is_completed %}locked{% endif %}">Back to Hub</a>
+      {% endif %}
+      <span id="completion-note" class="pill" {% if not is_completed %}style="display:none;"{% endif %}>XP already awarded.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const levelData = {{ {
+    "puzzle_name": puzzle_name,
+    "options": options,
+    "best_option": best_option,
+    "xp_reward": xp_reward,
+    "is_completed": is_completed,
+    "level": level,
+    "total_levels": total_levels,
+    "next_url": level < total_levels and url_for('puzzle_big_o_bistro', level_num=level + 1) or url_for('puzzles_hub'),
+  } | tojson }};
+
+  const statusEl = document.getElementById('status');
+  const statusPill = document.getElementById('status-pill');
+  const nextLevelLink = document.getElementById('next-level');
+  const completionNote = document.getElementById('completion-note');
+  const optionCards = [...document.querySelectorAll('.option-card')];
+
+  const optionsById = Object.fromEntries(levelData.options.map(o => [o.id, o]));
+  let locked = levelData.is_completed;
+
+  function setStatus(message, tone = "") {
+    statusEl.textContent = message;
+    statusEl.className = `status ${tone}`;
+    statusPill.textContent = tone === "success" ? "Served" : "Awaiting order";
+  }
+
+  function revealNote(card, text) {
+    const note = card.querySelector('[data-note]');
+    if (note) { note.textContent = text; }
+  }
+
+  function markSelection(card) {
+    optionCards.forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+  }
+
+  async function awardXp() {
+    try {
+      const response = await fetch("{{ url_for('complete_puzzle') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ puzzle_name: levelData.puzzle_name })
+      });
+      if (!response.ok) { throw new Error('Failed to award XP'); }
+      completionNote.style.display = '';
+    } catch (err) {
+      console.error(err);
+      completionNote.textContent = 'Correct, but failed to save XP';
+      completionNote.style.display = '';
+    }
+  }
+
+  function finish() {
+    locked = true;
+    optionCards.forEach(c => c.classList.add('locked'));
+    nextLevelLink.classList.remove('locked');
+  }
+
+  function handleChoice(card) {
+    if (locked) return;
+    const id = card.dataset.optionId;
+    const option = optionsById[id];
+    if (!option) return;
+
+    markSelection(card);
+
+    if (option.result === 'fail') {
+      setStatus(`Not safe: ${option.fail_reason || 'fails a hidden case.'}`, 'error');
+      revealNote(card, option.explanation);
+      return;
+    }
+
+    if (option.result === 'ok') {
+      setStatus(option.almost_reason || 'Works, but there is a faster choice for this constraint.', 'warning');
+      revealNote(card, option.explanation);
+      return;
+    }
+
+    // Best option
+    setStatus(`Plate served! ${option.speed_gain || 'Clean Big-O win.'}`, 'success');
+    revealNote(card, option.explanation);
+    finish();
+    awardXp();
+  }
+
+  optionCards.forEach(card => {
+    card.addEventListener('click', () => handleChoice(card));
+  });
+
+  if (locked) {
+    setStatus('Level already cleared. Replay the menu or head to the next table.', 'success');
+    optionCards.forEach(c => c.classList.add('locked'));
+    completionNote.style.display = '';
+  } else {
+    setStatus('Pick the optimization that survives the hidden cases.', '');
+  }
+</script>
+{% endblock %}

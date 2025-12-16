@@ -195,3 +195,154 @@ GIT_REBASE_RESCUE_LEVELS = [
         ],
     },
 ]
+
+BIG_O_BISTRO_LEVELS = [
+    {
+        "level": 1,
+        "title": "Big-O Bistro: Pantry Rush",
+        "scenario": "The pantry labels list can be 8k items long and the current duplicate check uses nested loops. The kitchen tablet times out at ~120ms.",
+        "goal": "Pick the smallest change that guarantees correctness while dropping the worst-case time.",
+        "constraints": {"n": 8000, "limit_ms": 120},
+        "function_snippet": """def has_duplicate(labels):
+    for i in range(len(labels)):
+        for j in range(i + 1, len(labels)):
+            if labels[i] == labels[j]:
+                return True
+    return False
+""",
+        "hidden_cases": [
+            "Other stations reuse `labels` later and expect its original order to stay intact.",
+            "Input can already be unique; we still need the worst-case path to be fast.",
+        ],
+        "best_option": "set_tracking",
+        "options": [
+            {
+                "id": "set_tracking",
+                "label": "Swap nested loops for a `set` of seen labels",
+                "kind": "data structure swap",
+                "big_o": "O(n)",
+                "result": "best",
+                "speed_gain": "n^2 -> n with one pass",
+                "explanation": "Track seen labels in a set and bail on the first repeat. Order is untouched and the worst case scales linearly.",
+            },
+            {
+                "id": "sort_in_place",
+                "label": "Sort labels in-place, then scan neighbors",
+                "kind": "sorting tradeoff",
+                "big_o": "O(n log n)",
+                "result": "fail",
+                "fail_reason": "Sorting in-place mutates the list. Hidden tests expect the original order for later steps.",
+                "explanation": "Sorting plus neighbor scan lowers comparisons, but the mutation breaks callers and adds log n cost.",
+            },
+            {
+                "id": "early_cutoff",
+                "label": "Only scan the first 3k labels to stay under the limit",
+                "kind": "shortcut",
+                "big_o": "O(k^2) on a prefix",
+                "result": "fail",
+                "fail_reason": "Skips tail data, so duplicates beyond 3k slip through.",
+                "explanation": "Time improves by ignoring work, but correctness collapses on long inputs.",
+            },
+        ],
+    },
+    {
+        "level": 2,
+        "title": "Big-O Bistro: Line Cook Cache",
+        "scenario": "Every minute, a batch request asks for counts of up to 200 ingredients across 20k orders. The function rescans the orders list for every query.",
+        "goal": "Avoid rework while staying correct if orders change between requests.",
+        "constraints": {"n": 20000, "q": 200, "limit_ms": 140},
+        "function_snippet": """def top_counts(orders, requested):
+    totals = []
+    for item in requested:
+        count = 0
+        for order in orders:
+            if order == item:
+                count += 1
+        totals.append((item, count))
+    totals.sort(key=lambda x: x[1], reverse=True)
+    return totals[:3]
+""",
+        "hidden_cases": [
+            "New online orders can appear between calls; cached results must notice.",
+            "Some batches repeat identical `requested` lists and should not rescan everything.",
+        ],
+        "best_option": "precompute_counts",
+        "options": [
+            {
+                "id": "precompute_counts",
+                "label": "Build a dict of counts once, then answer every query from it",
+                "kind": "precomputation",
+                "big_o": "O(n + q)",
+                "result": "best",
+                "speed_gain": "n*q -> n + q",
+                "explanation": "One pass to tally orders, O(1) lookups per ingredient, and no stale data because it recomputes when orders change.",
+            },
+            {
+                "id": "global_cache",
+                "label": "Cache the last result and always return it if queries match",
+                "kind": "caching",
+                "big_o": "O(1) after first run",
+                "result": "fail",
+                "fail_reason": "Ignores that `orders` mutate. Hidden tests append new orders and expect updated counts.",
+                "explanation": "Great for identical inputs, but without invalidation the cache serves stale totals.",
+            },
+            {
+                "id": "sort_then_search",
+                "label": "Sort orders once, then binary-search ranges per item",
+                "kind": "sorting tradeoff",
+                "big_o": "O(n log n + q log n)",
+                "result": "ok",
+                "almost_reason": "Correct and faster than n\u00d7q, but still slower than a hash map and adds sorting overhead every minute.",
+                "explanation": "Binary searching sorted data is fine, yet it burns log n and still walks q times.",
+            },
+        ],
+    },
+    {
+        "level": 3,
+        "title": "Big-O Bistro: Plating Order",
+        "scenario": "Servers send a 12k-item ticket stream with repeats. We need the first occurrence of each dish in arrival order for expo screens.",
+        "goal": "Drop duplicates fast without scrambling the original arrival order.",
+        "constraints": {"n": 12000, "limit_ms": 200},
+        "function_snippet": """def unique_lineup(dishes):
+    unique = []
+    for dish in dishes:
+        if dish not in unique:
+            unique.append(dish)
+    return unique
+""",
+        "hidden_cases": [
+            "Expo screens rely on first-seen order; any sorting or set that reorders will fail.",
+            "Long streaks of repeats mean `dish not in unique` must stay O(1).",
+        ],
+        "best_option": "ordered_dict",
+        "options": [
+            {
+                "id": "ordered_dict",
+                "label": "Use dict.fromkeys to dedupe while preserving order",
+                "kind": "data structure swap",
+                "big_o": "O(n)",
+                "result": "best",
+                "speed_gain": "n^2 membership -> n with ordered hashing",
+                "explanation": "Python dicts keep insertion order, so you dedupe in one pass and keep the first appearance intact.",
+            },
+            {
+                "id": "plain_set",
+                "label": "Cast to a set to drop repeats",
+                "kind": "data structure swap",
+                "big_o": "O(n)",
+                "result": "fail",
+                "fail_reason": "Sets are unordered; hidden tests compare against the original arrival order.",
+                "explanation": "Time is great, but order is destroyed so correctness fails.",
+            },
+            {
+                "id": "sort_and_unique",
+                "label": "Sort dishes then walk once to dedupe",
+                "kind": "sorting tradeoff",
+                "big_o": "O(n log n)",
+                "result": "fail",
+                "fail_reason": "Sorting reorders arrivals and the hidden cases reject it.",
+                "explanation": "Even though it removes repeats quickly, it violates the order contract and adds log n time.",
+            },
+        ],
+    },
+]

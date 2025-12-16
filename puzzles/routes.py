@@ -3,6 +3,7 @@ from flask_login import current_user, login_required
 
 from .data import (
     BIT_FLIPPER_LEVELS,
+    BIG_O_BISTRO_LEVELS,
     DEFAULT_PUZZLE_XP,
     GIT_REBASE_RESCUE_LEVELS,
     REGEX_RESCUE_LEVELS,
@@ -53,6 +54,13 @@ def register_puzzle_routes(app, db, PuzzleCompletion):
         """The Bit Flipper mini-game."""
         level_data = _level_payload(BIT_FLIPPER_LEVELS, level_num, "bit_flipper")
         return render_template("puzzle_bit_flipper.html", **level_data)
+
+    @app.route("/puzzles/big-o-bistro/<int:level_num>")
+    @login_required
+    def puzzle_big_o_bistro(level_num):
+        """Pick the right optimization for performance-sensitive functions."""
+        level_data = _level_payload(BIG_O_BISTRO_LEVELS, level_num, "big_o_bistro")
+        return render_template("puzzle_big_o_bistro.html", **level_data)
 
     @app.route("/puzzles/selector-sleuth/<int:level_num>")
     @login_required
