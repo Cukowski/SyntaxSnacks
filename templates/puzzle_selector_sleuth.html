@@ -1,11 +1,27 @@
 {% extends 'base.html' %}
 {% block content %}
 <style>
+  .puzzle-header { text-align: center; max-width: 820px; margin: 0 auto; }
+  .puzzle-header p { color: #cfe5f4; }
   .selector-sleuth-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    gap: clamp(16px, 3vw, 24px);
     align-items: start;
+  }
+  .input-panel, .preview-panel{
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .panel-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin:0 0 8px 0;
+    font-weight:700;
   }
   #html-preview-box {
     background: #101622;
@@ -25,27 +41,46 @@
   #selector-input {
     font-family: monospace;
     font-size: 1.1em;
+    background: #0f1624;
+    border: 1px solid rgba(255,255,255,.18);
+    color: #e9f6ff;
+    padding: 10px 12px;
+    border-radius: 10px;
   }
-  #feedback { height: 24px; margin-top: 10px; font-weight: bold; }
+  #feedback { min-height: 24px; margin-top: 10px; font-weight: bold; }
   #feedback.correct { color: #45f0c8; }
   #feedback.incorrect { color: #ff6b6b; }
+  .hint-text { color: #9fb7c8; font-size: 0.95em; margin-top: 6px; }
+  .badge{
+    display:inline-block;
+    padding:4px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.25);
+    background:rgba(255,255,255,0.08);
+    font-size:0.85em;
+    letter-spacing:0.02em;
+  }
 
   @media (max-width: 768px) {
     .selector-sleuth-grid { grid-template-columns: 1fr; }
   }
 </style>
 
-<div class="glass">
+<div class="glass puzzle-shell">
   <a href="{{ url_for('puzzles_hub') }}">&larr; Back to Puzzle Arcade</a>
-  <div style="text-align: center;">
+  <div class="puzzle-header">
     <h2 style="margin-top: 12px;">{{ title }} (Level {{ level }}/{{ total_levels }})</h2>
     <p>{{ instruction }}</p>
   </div>
 
   <div class="selector-sleuth-grid">
-    <div>
-      <label for="selector-input">Your Selector:</label>
+    <div class="input-panel">
+      <div class="panel-title">
+        <span>Your Selector</span>
+        <span class="badge">+{{ xp_reward }} XP</span>
+      </div>
       <input type="text" id="selector-input" placeholder="e.g., div .item" autocomplete="off" {% if is_completed %}disabled{% endif %}>
+      <p class="hint-text">Type a CSS selector to highlight matching nodes in the preview.</p>
       <div id="feedback"></div>
       <div id="completion-actions" style="margin-top: 10px;">
         {% if is_completed %}
@@ -56,8 +91,8 @@
         {% endif %}
       </div>
     </div>
-    <div>
-      <label>HTML Preview:</label>
+    <div class="preview-panel">
+      <div class="panel-title"><span>HTML Preview</span></div>
       <div id="html-preview-box"></div>
     </div>
   </div>

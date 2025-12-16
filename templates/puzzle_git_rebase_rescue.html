@@ -26,9 +26,13 @@
   .controls button { padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: #fff; cursor: pointer; transition: background 0.2s; }
   .controls button:hover { background: rgba(255,255,255,0.12); }
   .locked { opacity: 0.6; pointer-events: none; }
+
+  @media (max-width: 860px) {
+    .rebase-grid { grid-template-columns: 1fr; }
+  }
 </style>
 
-<div class="glass rebase-rescue">
+<div class="glass rebase-rescue puzzle-shell">
   <a href="{{ url_for('puzzles_hub') }}">&larr; Back to Puzzle Arcade</a>
   <div class="rebase-header">
     <div>

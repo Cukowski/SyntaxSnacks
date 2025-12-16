@@ -1,48 +1,104 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container fade-in">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>{{ title }}</h2>
-                <span class="badge bg-secondary">Level {{ level }} / {{ total_levels }}</span>
-            </div>
+<style>
+  .regex-shell{ max-width: 840px; margin: 0 auto; display:flex; flex-direction:column; gap:14px; }
+  .regex-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .regex-panels{ display:grid; grid-template-columns:1fr; gap:12px; }
+  .regex-panel{
+    background: rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:14px;
+    padding:14px;
+  }
+  .regex-panel h4{ margin:0 0 6px 0; }
+  #display-area{
+    background:#0f1624;
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:10px;
+    padding:12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color:#e7f3ff;
+    font-size:1.05em;
+    min-height:66px;
+  }
+  #regex-input{
+    width:100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size:1.05em;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.18);
+    background:#0f1624;
+    color:#e7f3ff;
+  }
+  .regex-hint{ color:#9fb7c8; margin:6px 0 0 0; font-size:0.95em; }
+  #feedback{
+    margin-top:10px;
+    border-radius:10px;
+    padding:10px 12px;
+    display:none;
+    font-weight:700;
+  }
+  #feedback.success{ display:block; background:rgba(69,240,200,0.12); border:1px solid rgba(69,240,200,0.4); color:#45f0c8; }
+  #feedback.error{ display:block; background:rgba(255,107,107,0.12); border:1px solid rgba(255,107,107,0.35); color:#ff9b9b; }
+  mark{ background:rgba(69,240,200,0.25); color:inherit; padding:0 2px; border-radius:3px; }
+  .hidden{ display:none !important; }
+  .badge{
+    display:inline-block;
+    padding:4px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,0.25);
+    background:rgba(255,255,255,0.08);
+    font-size:0.85em;
+    letter-spacing:0.02em;
+  }
 
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <p class="lead">{{ instruction }}</p>
-                    
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Test String:</label>
-                        <div class="p-3 bg-light border rounded font-monospace" id="display-area" style="font-size: 1.1em;">
-                            {{ test_string }}
-                        </div>
-                    </div>
+  @media (max-width: 640px){
+    .regex-shell{ gap:12px; }
+    .regex-input-row{ flex-wrap: wrap; }
+  }
+</style>
 
-                    <div class="mb-3">
-                        <label for="regex-input" class="form-label">Your Regex Pattern:</label>
-                        <div class="input-group">
-                            <span class="input-group-text">/</span>
-                            <input type="text" id="regex-input" class="form-control font-monospace" placeholder="e.g. \d+" autocomplete="off">
-                            <span class="input-group-text">/g</span>
-                        </div>
-                        <div class="form-text">Do not include the surrounding slashes. The global flag <code>g</code> is enabled.</div>
-                    </div>
-
-                    <div id="feedback" class="alert d-none"></div>
-
-                    <button id="check-btn" class="btn btn-primary">Check Match</button>
-                    
-                    {% if level < total_levels %}
-                    <a href="{{ url_for('puzzle_regex_rescue', level_num=level+1) }}" id="next-btn" class="btn btn-success d-none">Next Level &rarr;</a>
-                    {% else %}
-                    <a href="{{ url_for('puzzles_hub') }}" id="next-btn" class="btn btn-success d-none">Back to Puzzles</a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+<div class="glass puzzle-shell regex-shell">
+  <a href="{{ url_for('puzzles_hub') }}">&larr; Back to Puzzle Arcade</a>
+  <div class="regex-header">
+    <div>
+      <h2 style="margin: 0;">{{ title }}</h2>
+      <p style="margin:4px 0 0 0; color:#cfe5f4;">Level {{ level }} / {{ total_levels }}</p>
     </div>
+    <div class="badge">+{{ xp_reward }} XP</div>
+  </div>
+
+  <div class="regex-panels">
+    <div class="regex-panel">
+      <h4>Goal</h4>
+      <p style="margin:0 0 8px 0; color:#cfe5f4;">{{ instruction }}</p>
+      <label class="regex-hint" style="display:block; margin-top:0;">Test String:</label>
+      <div id="display-area">{{ test_string }}</div>
+    </div>
+
+    <div class="regex-panel">
+      <h4>Your Regex</h4>
+      <label for="regex-input" class="regex-hint" style="margin-top:0;">Type a pattern (global flag <code>g</code> is on). Do not include the surrounding slashes.</label>
+      <div class="regex-input-row" style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+        <span style="opacity:0.7; font-family:monospace;">/</span>
+        <input type="text" id="regex-input" placeholder="e.g. \\d+" autocomplete="off">
+        <span style="opacity:0.7; font-family:monospace;">/g</span>
+      </div>
+
+      <div id="feedback"></div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+        <button id="check-btn" class="btn">Check Match</button>
+        {% if level < total_levels %}
+          <a href="{{ url_for('puzzle_regex_rescue', level_num=level+1) }}" id="next-btn" class="btn hidden">Next Level &rarr;</a>
+        {% else %}
+          <a href="{{ url_for('puzzles_hub') }}" id="next-btn" class="btn hidden">Back to Puzzles</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -71,10 +127,12 @@
         }
     }
 
+    function showFeedback(type, message) {
+        feedback.textContent = message;
+        feedback.className = type === 'success' ? 'success' : 'error';
+    }
+
     checkBtn.addEventListener('click', () => {
-        feedback.classList.add('d-none');
-        feedback.classList.remove('alert-success', 'alert-danger');
-        
         try {
             const regex = new RegExp(input.value, 'g');
             const matches = testString.match(regex) || [];
@@ -88,11 +146,9 @@
             highlightMatches(regex);
 
             if (isCorrect) {
-                feedback.textContent = "Correct! Pattern matched.";
-                feedback.classList.add('alert', 'alert-success', 'd-block');
-                feedback.classList.remove('d-none');
-                nextBtn.classList.remove('d-none');
-                checkBtn.classList.add('d-none');
+                showFeedback('success', "Correct! Pattern matched.");
+                nextBtn.classList.remove('hidden');
+                checkBtn.classList.add('hidden');
                 input.disabled = true;
 
                 if (!isCompleted) {
@@ -103,14 +159,10 @@
                     });
                 }
             } else {
-                feedback.textContent = `Not quite. Found: [${matches.join(', ')}] but expected: [${expectedMatches.join(', ')}]`;
-                feedback.classList.add('alert', 'alert-danger', 'd-block');
-                feedback.classList.remove('d-none');
+                showFeedback('error', `Not quite. Found: [${matches.join(', ')}] but expected: [${expectedMatches.join(', ')}]`);
             }
         } catch (e) {
-            feedback.textContent = "Invalid Regular Expression.";
-            feedback.classList.add('alert', 'alert-danger', 'd-block');
-            feedback.classList.remove('d-none');
+            showFeedback('error', "Invalid Regular Expression.");
         }
     });
 

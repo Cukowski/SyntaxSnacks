@@ -1,15 +1,19 @@
 {% extends 'base.html' %}
 {% block content %}
 <style>
-  .bit-flipper { text-align: center; }
-  .switch-container { display: flex; justify-content: center; gap: 10px; margin: 20px 0; }
+  .bit-flipper { text-align: center; max-width: 780px; margin: 0 auto; }
+  .switch-container {
+    display: flex; justify-content: center; gap: 12px 14px;
+    margin: 20px auto; flex-wrap: wrap;
+  }
+  .switch-wrapper { display: flex; flex-direction: column; align-items: center; flex: 0 0 72px; }
   .switch {
-    width: 50px; height: 80px; background-color: #334; border: 2px solid #556;
-    border-radius: 8px; cursor: pointer; position: relative;
+    width: 54px; height: 86px; background-color: #334; border: 2px solid #556;
+    border-radius: 10px; cursor: pointer; position: relative;
     transition: background-color 0.2s;
   }
   .switch .handle {
-    width: 40px; height: 35px; background-color: #889; border-radius: 4px;
+    width: 40px; height: 36px; background-color: #889; border-radius: 6px;
     position: absolute; left: 50%; transform: translateX(-50%);
     transition: top 0.2s ease-out;
   }
@@ -25,13 +29,19 @@
   #completion-actions .completion-message { margin-bottom: 10px; }
   #completion-actions .btn { display: inline-block; } /* Ensure button has block properties for margin */
 
+  @media (max-width: 520px) {
+    .switch { width: 46px; height: 76px; }
+    .switch .handle { width: 34px; height: 32px; }
+    .switch-wrapper { flex: 0 0 64px; }
+    .bit-value { font-size: 0.75em; }
+  }
 </style>
 
-<div class="glass">
+<div class="glass puzzle-shell">
   <a href="{{ url_for('puzzles_hub') }}">&larr; Back to Puzzle Arcade</a>
   <div class="bit-flipper">
     <h2 style="margin-top: 12px;">{{ title }} (Level {{ level }}/{{ total_levels }})</h2>
-    <p>Click the switches to represent the decimal number <strong>{{ target_number }}</strong> in binary.</p>
+    <p>Click the switches to represent the decimal number <strong>{{ target }}</strong> in binary.</p>
 
     <div class="switch-container">
       {% for i in range(8) %}
@@ -66,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const switches = document.querySelectorAll('.switch');
   const resultDisplay = document.getElementById('result-display');
   const feedback = document.getElementById('feedback');
-  const targetNumber = {{ target_number }};
+  const targetNumber = {{ target }};
   const isCompleted = {{ is_completed|tojson }};
   let isLocked = isCompleted;
 
