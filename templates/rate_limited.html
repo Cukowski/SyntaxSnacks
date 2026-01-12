@@ -1,0 +1,12 @@
+{% extends 'base.html' %}{% block content %}
+<div class="glass" style="position:relative; z-index: 2000; margin-top: 10px;">
+  <h2>We’re getting a lot of traffic</h2>
+  <p>Please slow down for a moment so the server can catch up.</p>
+  {% if retry_after %}
+    <p>Try again in about {{ retry_after }} seconds.</p>
+  {% endif %}
+  <p style="margin-top:12px">
+    <a class="btn-primary" href="{{ url_for('index') }}">Back to Home</a>
+  </p>
+</div>
+{% endblock %}
