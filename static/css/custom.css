@@ -141,6 +141,12 @@ footer{ color:#a8c0cf; padding:18px; }
   font-weight:600; text-align:center;
 }
 
+.admin-menu { position: relative; display:inline-block; }
+.admin-menu__panel { position:absolute; right:0; background:#111; border:1px solid #333; border-radius:8px; padding:8px 0; display:none; min-width:180px; z-index:20; }
+.admin-menu__panel a { display:block; padding:8px 12px; color:#fff; text-decoration:none; }
+.admin-menu__panel a:hover { background:#1f1f1f; }
+.admin-menu.open .admin-menu__panel { display:block; }
+
 label{ display:block; margin-top:10px; color:#cfe5f4; }
 input, textarea{
   width:100%; border-radius:10px;
