@@ -204,41 +204,13 @@ class AuditLog(db.Model):
 # CSV jokes/facts (Home page)
 # -----------------------------------------------------------------------------
 DATA_DIR = os.path.join(BASE_DIR, "data")
-FUN_CSV = os.path.join(DATA_DIR, "fun_snacks.csv")
 os.makedirs(DATA_DIR, exist_ok=True)
-
-_fun_cache = {"items": [], "mtime": None}
-
-def _load_fun_csv():
-    """Load or hot-reload fun facts/jokes from CSV into a small cache."""
-    try:
-        mtime = os.path.getmtime(FUN_CSV)
-    except FileNotFoundError:
-        return []
-    if _fun_cache["mtime"] != mtime:
-        items = []
-        try:
-            with open(FUN_CSV, encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    t = (row.get("type") or "fun").strip()
-                    text = (row.get("text") or "").strip()
-                    if text:
-                        items.append({"type": t, "text": text})
-            _fun_cache["items"] = items
-            _fun_cache["mtime"] = mtime
-        except Exception:
-            _fun_cache["items"] = []
-    return _fun_cache["items"]
 
 def random_fun():
     joke_row = Joke.query.order_by(db.func.random()).first()
     if joke_row:
         return {"type": joke_row.entry_type or "fun", "text": joke_row.text}
-    items = _load_fun_csv()
-    if not items:
-        return {"type": "fun", "text": "Welcome to SyntaxSnacks!"}
-    return random.choice(items)
+    return {"type": "fun", "text": "Welcome to SyntaxSnacks!"}
 
 # -----------------------------------------------------------------------------
 # Helpers
