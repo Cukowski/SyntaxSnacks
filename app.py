@@ -1,6 +1,8 @@
 import os
-from datetime import datetime, date, timedelta, timezone
 import secrets
+import time
+from collections import defaultdict, deque
+from datetime import datetime, date, timedelta, timezone
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask, render_template, request, redirect, url_for, flash, Response
 from flask_sqlalchemy import SQLAlchemy
@@ -29,6 +31,35 @@ def _env_flag(name: str, default: bool = False) -> bool:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
+def _parse_rate_limit(value: str) -> tuple[int, int]:
+    """Parse a rate limit string like '10 per minute' into (count, seconds)."""
+    parts = value.strip().lower().split()
+    if len(parts) < 3 or parts[1] != "per":
+        raise ValueError(f"Invalid rate limit format: {value!r}")
+    count = int(parts[0])
+    unit = parts[2]
+    if unit.endswith("s"):
+        unit = unit[:-1]
+    seconds_map = {
+        "second": 1,
+        "minute": 60,
+        "hour": 3600,
+        "day": 86400,
+    }
+    if unit not in seconds_map:
+        raise ValueError(f"Invalid rate limit unit: {unit!r}")
+    return count, seconds_map[unit]
+
+def _env_rate_limit(name: str, default: str) -> tuple[int, int]:
+    value = os.environ.get(name, default)
+    return _parse_rate_limit(value)
+
+def _client_ip() -> str:
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.remote_addr or "unknown"
+
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "dev-secret")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -36,6 +67,12 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
     f"sqlite:///{os.path.join(BASE_DIR, 'app.db')}"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+rate_limits = {
+    "auth": _env_rate_limit("RATE_LIMIT_AUTH", "10 per minute"),
+    "contact": _env_rate_limit("RATE_LIMIT_CONTACT", "5 per minute"),
+}
+rate_limit_buckets: dict[str, deque[float]] = defaultdict(deque)
 
 db = SQLAlchemy(app)
 
@@ -61,6 +98,34 @@ def enforce_active_account():
         logout_user()
         flash("Your account has been deactivated. Contact an admin to restore access.")
         return redirect(url_for("login"))
+
+@app.before_request
+def enforce_rate_limits():
+    if request.endpoint in {"login", "signup"}:
+        bucket = "auth"
+    elif request.endpoint == "contact":
+        bucket = "contact"
+    else:
+        return None
+
+    max_requests, window_seconds = rate_limits[bucket]
+    key = f"{bucket}:{_client_ip()}"
+    now = time.time()
+    window_start = now - window_seconds
+    timestamps = rate_limit_buckets[key]
+    while timestamps and timestamps[0] < window_start:
+        timestamps.popleft()
+    if len(timestamps) >= max_requests:
+        retry_after = max(1, int(window_seconds - (now - timestamps[0])))
+        response = render_template("rate_limited.html", retry_after=retry_after)
+        return Response(response, status=429, headers={"Retry-After": str(retry_after)})
+    timestamps.append(now)
+    return None
+
+@app.errorhandler(429)
+def rate_limit_exceeded(error):
+    retry_after = getattr(error, "retry_after", None)
+    return render_template("rate_limited.html", retry_after=retry_after), 429
 
 # -----------------------------------------------------------------------------
 # Models
