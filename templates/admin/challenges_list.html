@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="glass">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+    <h2 style="margin:0;">Challenges</h2>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+      <a class="btn" href="{{ url_for('admin_import_challenges') }}">Import CSV</a>
+      <a class="btn-primary" href="{{ url_for('admin_add_challenge') }}">Add Challenge</a>
+    </div>
+  </div>
+  <p style="margin-top:0.25rem; color:#777;">
+    Draft: {{ status_counts.get('draft', 0) or 0 }} · Published: {{ status_counts.get('published', 0) or 0 }}
+  </p>
+
+  <form method="get" class="filters" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+    <label style="flex:1; min-width: 240px;">
+      Search title
+      <input type="text" name="search" placeholder="Reverse string" value="{{ search }}" />
+    </label>
+    <label>
+      Status
+      <select name="status" onchange="this.form.submit()">
+        <option value="all" {{ 'selected' if status_filter == 'all' else '' }}>All</option>
+        <option value="draft" {{ 'selected' if status_filter == 'draft' else '' }}>Draft</option>
+        <option value="published" {{ 'selected' if status_filter == 'published' else '' }}>Published</option>
+      </select>
+    </label>
+    <label>
+      Tag contains
+      <input type="text" name="tag" value="{{ tag_filter }}" placeholder="strings" />
+    </label>
+    <button type="submit" class="btn">Apply</button>
+  </form>
+
+  {% if challenges %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="min-width: 180px;">Title</th>
+            <th>Status</th>
+            <th>Tags</th>
+            <th>Topic</th>
+            <th>Published</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ch in challenges %}
+          <tr>
+            <td>
+              <div style="font-weight:600;">{{ ch.title }}</div>
+              <div style="color:#666; font-size:0.9rem;">{{ ch.prompt[:120] }}{% if ch.prompt|length > 120 %}…{% endif %}</div>
+            </td>
+            <td>
+              <span class="badge" style="padding:4px 8px; border-radius:12px; background: {{ '#c4f0c2' if ch.status=='published' else '#ffe8b3' }}; color:#333;">{{ ch.status.title() }}</span>
+            </td>
+            <td>{{ ch.tags or '—' }}</td>
+            <td>{{ ch.topic or '—' }}</td>
+            <td>{{ ch.published_at.strftime('%Y-%m-%d') if ch.published_at else '—' }}</td>
+            <td style="text-align:right; white-space:nowrap;">
+              <form method="post" action="{{ url_for('admin_publish_challenge', challenge_id=ch.id) }}" style="display:inline;">
+                <input type="hidden" name="next" value="{{ request.full_path }}">
+                {% if ch.status == 'published' %}
+                  <input type="hidden" name="action" value="unpublish">
+                  <button class="btn" type="submit">Unpublish</button>
+                {% else %}
+                  <button class="btn-primary" type="submit">Publish</button>
+                {% endif %}
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if pagination.pages > 1 %}
+      <div class="pagination" style="display:flex; gap:1rem; align-items:center; justify-content:center; margin-top:1rem;">
+        {% if pagination.has_prev %}
+          <a class="btn" href="{{ url_for('admin_challenges', page=pagination.prev_num, search=search, status=status_filter, tag=tag_filter) }}">&laquo; Previous</a>
+        {% endif %}
+        <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        {% if pagination.has_next %}
+          <a class="btn" href="{{ url_for('admin_challenges', page=pagination.next_num, search=search, status=status_filter, tag=tag_filter) }}">Next &raquo;</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% else %}
+    <p>No challenges found.</p>
+  {% endif %}
+</div>
+{% endblock %}
