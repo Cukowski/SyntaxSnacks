@@ -5,7 +5,14 @@
   <label>Language</label><input name="language" placeholder="Python / JS / General">
   <label>Difficulty</label>
   <select name="difficulty"><option>Easy</option><option>Medium</option><option>Hard</option></select>
-  <label>Topic/Tags</label><input name="topic" placeholder="strings, loops">
+  <label>Topic</label><input name="topic" placeholder="strings">
+  <label>Tags (comma-separated)</label><input name="tags" placeholder="arrays, pointers">
+  <label>Status</label>
+  <select name="status">
+    <option value="draft">Draft</option>
+    <option value="published">Published</option>
+  </select>
+  <small style="display:block; margin-top:-8px; color:#888;">Published challenges are visible immediately; draft keeps them hidden.</small>
   <label>Prompt</label><textarea name="prompt" rows="6" required></textarea>
   <label>Hints</label><textarea name="hints" rows="3"></textarea>
   <label>Solution</label><textarea name="solution" rows="6"></textarea>
