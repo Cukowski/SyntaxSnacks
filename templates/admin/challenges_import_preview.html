@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block content %}
+{% set valid_count = preview_rows|selectattr('is_valid')|list|length %}
+{% set invalid_count = preview_rows|rejectattr('is_valid')|list|length %}
+<div class="glass">
+  <h2>Import Preview{% if source_filename %} — {{ source_filename }}{% endif %}</h2>
+  <p>{{ valid_count }} valid rows, {{ invalid_count }} invalid.</p>
+
+  {% if preview_rows %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Tags</th>
+            <th>Published At</th>
+            <th>Errors</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in preview_rows %}
+          <tr style="{% if not row.is_valid %}background: #fff0f0;{% endif %}">
+            <td>{{ row.index }}</td>
+            <td>{{ row.data.title or '—' }}</td>
+            <td>{{ row.data.status }}</td>
+            <td>{{ row.data.tags or '—' }}</td>
+            <td>
+              {% if row.data.published_at %}
+                {{ row.data.published_at.strftime('%Y-%m-%d') }}
+              {% elif row.data.status == 'published' %}
+                Set on import
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if row.errors %}
+                <ul style="padding-left:18px; margin:0;">
+                  {% for err in row.errors %}
+                    <li>{{ err }}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <span style="color: #2d7a2d;">OK</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <form method="post" action="{{ url_for('admin_import_challenges') }}" style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+      <textarea name="payload" hidden>{{ payload }}</textarea>
+      {% if source_filename %}<input type="hidden" name="source_filename" value="{{ source_filename }}">{% endif %}
+      <button type="submit" class="btn-primary" {% if valid_count == 0 %}disabled{% endif %}>Confirm import</button>
+      <a class="btn" href="{{ url_for('admin_import_challenges') }}">Start over</a>
+    </form>
+  {% else %}
+    <p>No rows found in the uploaded CSV.</p>
+    <p><a class="btn" href="{{ url_for('admin_import_challenges') }}">Back to upload</a></p>
+  {% endif %}
+</div>
+{% endblock %}
