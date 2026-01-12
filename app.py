@@ -480,6 +480,21 @@ def _normalize_tags(raw: str) -> str:
     parts = [p.strip() for p in (raw or "").split(",") if p and p.strip()]
     return ",".join(parts)
 
+def _challenge_dedupe_key(cleaned: dict):
+    return (cleaned["title"].strip().lower(), cleaned["prompt"].strip().lower())
+
+
+def _admin_challenge_query(search: str, status_filter: str, tag_filter: str):
+    query = Challenge.query
+    if search:
+        like = f"%{search.lower()}%"
+        query = query.filter(func.lower(Challenge.title).like(like))
+    if status_filter in CHALLENGE_STATUSES:
+        query = query.filter(Challenge.status == status_filter)
+    if tag_filter:
+        query = query.filter(func.lower(Challenge.tags).like(f"%{tag_filter.lower()}%"))
+    return query
+
 
 def _validate_challenge_row(row: dict):
     """Clean and validate a row coming from CSV/import payload."""
@@ -703,15 +718,7 @@ def admin_challenges():
     tag_filter = request.args.get("tag", "").strip()
     page = request.args.get("page", 1, type=int)
 
-    query = Challenge.query
-    if search:
-        like = f"%{search.lower()}%"
-        query = query.filter(func.lower(Challenge.title).like(like))
-    if status_filter in CHALLENGE_STATUSES:
-        query = query.filter(Challenge.status == status_filter)
-    if tag_filter:
-        query = query.filter(func.lower(Challenge.tags).like(f"%{tag_filter.lower()}%"))
-
+    query = _admin_challenge_query(search, status_filter, tag_filter)
     pagination = query.order_by(Challenge.id.desc()).paginate(
         page=page, per_page=25, error_out=False
     )
@@ -719,6 +726,12 @@ def admin_challenges():
         db.session.query(Challenge.status, func.count(Challenge.id))
         .group_by(Challenge.status)
         .all()
+    )
+    export_url = url_for(
+        "admin_challenges_export",
+        search=search,
+        status=status_filter,
+        tag=tag_filter,
     )
     return render_template(
         "admin/challenges_list.html",
@@ -728,6 +741,7 @@ def admin_challenges():
         status_filter=status_filter,
         tag_filter=tag_filter,
         status_counts=status_counts,
+        export_url=export_url,
     )
 
 
@@ -795,12 +809,55 @@ def admin_import_challenges():
                 )
 
             try:
+                existing_map = {}
+                title_map = defaultdict(list)
+                for ch in Challenge.query.all():
+                    key = ((ch.title or "").strip().lower(), (ch.prompt or "").strip().lower())
+                    existing_map[key] = ch
+                    title_key = (ch.title or "").strip().lower()
+                    if title_key:
+                        title_map[title_key].append(ch)
+
+                seen = set()
+                imported = 0
+                updated = 0
+                skipped_dupes = 0
                 with db.session.begin():
                     for row in valid_rows:
                         data = row["data"]
+                        key = _challenge_dedupe_key(data)
+                        if key in seen:
+                            skipped_dupes += 1
+                            continue
+                        seen.add(key)
+
                         published_at = data["published_at"]
                         if data["status"] == "published" and not published_at:
                             published_at = datetime.now(timezone.utc)
+                        if data["status"] == "draft":
+                            published_at = None
+
+                        existing_ch = existing_map.get(key)
+                        if not existing_ch:
+                            title_matches = title_map.get(data["title"].strip().lower(), [])
+                            if len(title_matches) == 1:
+                                existing_ch = title_matches[0]
+                        if existing_ch and existing_ch.published_at and not data["published_at"] and data["status"] == "published":
+                            published_at = existing_ch.published_at
+                        if existing_ch:
+                            existing_ch.title = data["title"]
+                            existing_ch.prompt = data["prompt"]
+                            existing_ch.solution = data["solution"]
+                            existing_ch.hints = data["hints"]
+                            existing_ch.language = data["language"]
+                            existing_ch.difficulty = data["difficulty"]
+                            existing_ch.topic = data["topic"]
+                            existing_ch.tags = data["tags"]
+                            existing_ch.status = data["status"]
+                            existing_ch.published_at = published_at
+                            updated += 1
+                            continue
+
                         ch = Challenge(
                             title=data["title"],
                             prompt=data["prompt"],
@@ -815,7 +872,11 @@ def admin_import_challenges():
                             added_by=current_user.id,
                         )
                         db.session.add(ch)
-                flash(f"Imported {len(valid_rows)} challenges. Skipped {invalid_count} invalid rows.")
+                        imported += 1
+                flash(
+                    "Imported {} challenges. Updated {} existing. Skipped {} duplicates. "
+                    "Skipped {} invalid rows.".format(imported, updated, skipped_dupes, invalid_count)
+                )
                 return redirect(url_for("admin_challenges"))
             except Exception as e:
                 db.session.rollback()
@@ -872,10 +933,10 @@ def download_challenge_csv_example():
         flash("Admin only.")
         return redirect(url_for("index"))
     csv_text = (
-        "title,prompt,hints,solution,tags,status,published_at\n"
+        "title,prompt,hints,solution,language,difficulty,topic,tags,status,published_at\n"
         "Reverse String,Write a function that reverses a string.,"
         "Think about slicing or stacks.,Python: s[::-1]; JS: str.split('').reverse().join(''),"
-        "strings,published,2024-01-01\n"
+        "Python,Easy,Strings,strings,published,2024-01-01\n"
     )
     return (
         csv_text,
@@ -885,6 +946,62 @@ def download_challenge_csv_example():
             "Content-Disposition": 'attachment; filename="challenges_example.csv"',
         },
     )
+
+
+@app.route("/admin/challenges/export.csv")
+@login_required
+def admin_challenges_export():
+    _guard_admin()
+    search = request.args.get("search", "").strip()
+    status_filter = request.args.get("status", "all").lower()
+    tag_filter = request.args.get("tag", "").strip()
+
+    challenges = (
+        _admin_challenge_query(search, status_filter, tag_filter)
+        .order_by(Challenge.id.asc())
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "title",
+            "prompt",
+            "hints",
+            "solution",
+            "language",
+            "difficulty",
+            "topic",
+            "tags",
+            "status",
+            "published_at",
+        ]
+    )
+    for ch in challenges:
+        published_at = ch.published_at.strftime("%Y-%m-%d") if ch.published_at else ""
+        writer.writerow(
+            [
+                ch.title,
+                ch.prompt,
+                ch.hints or "",
+                ch.solution or "",
+                ch.language or "General",
+                ch.difficulty or "Easy",
+                ch.topic or "",
+                ch.tags or "",
+                ch.status,
+                published_at,
+            ]
+        )
+
+    csv_data = output.getvalue()
+    output.close()
+    headers = {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": 'attachment; filename="challenges_export.csv"',
+    }
+    return Response(csv_data, headers=headers)
 
 
 @app.post("/admin/challenges/<int:challenge_id>/publish")
@@ -920,6 +1037,12 @@ def admin_fun_cards():
                 stream = io.StringIO(upload.stream.read().decode("utf-8-sig"))
                 reader = csv.DictReader(stream)
                 count = 0
+                skipped = 0
+                existing = {
+                    ((j.entry_type or "fun").strip().lower(), (j.text or "").strip().lower())
+                    for j in Joke.query.all()
+                }
+                seen = set()
                 for row in reader:
                     text = (row.get("text") or "").strip()
                     if not text:
@@ -927,10 +1050,15 @@ def admin_fun_cards():
                     entry_type = (row.get("entry_type") or "fun").strip().lower()
                     if entry_type not in {"fun", "fact"}:
                         entry_type = "fun"
+                    key = (entry_type, text.lower())
+                    if key in seen or key in existing:
+                        skipped += 1
+                        continue
+                    seen.add(key)
                     db.session.add(Joke(text=text, entry_type=entry_type))
                     count += 1
                 db.session.commit()
-                flash(f"Imported {count} fun cards.")
+                flash(f"Imported {count} fun cards. Skipped {skipped} duplicates.")
             except Exception as e:
                 db.session.rollback()
                 flash(f"Import failed: {e}")
