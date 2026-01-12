@@ -37,9 +37,15 @@
 
           {% if current_user.is_authenticated %}
             {% if current_user.is_admin %}
-              <a href="{{ url_for('admin_users') }}">Users</a>
-              <a href="{{ url_for('admin_add_challenge') }}">Admin</a>
-              <a href="{{ url_for('admin_messages') }}">Inbox</a>
+              <div class="admin-menu" id="admin-menu">
+                <button class="btn" type="button" onclick="toggleAdminMenu()" aria-expanded="false">Admin ▾</button>
+                <div id="admin-menu-panel" class="admin-menu__panel">
+                  <a href="{{ url_for('admin_challenges') }}">Challenges</a>
+                  <a href="{{ url_for('admin_users') }}">Users</a>
+                  <a href="{{ url_for('admin_messages') }}">Inbox</a>
+                  <a href="{{ url_for('admin_fun_cards') }}">Fun Cards</a>
+                </div>
+              </div>
             {% endif %}
             <a href="{{ url_for('logout') }}">Logout</a>
           {% else %}
@@ -79,6 +85,13 @@
 
         const hidden = window.getComputedStyle(el).display === 'none';
         el.style.display = hidden ? 'block' : 'none';
+      }
+
+      function toggleAdminMenu() {
+        const menu = document.getElementById('admin-menu');
+        const open = menu.classList.toggle('open');
+        const btn = menu.querySelector('button');
+        if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       }
 
       // --- JS sandbox via iframe (srcdoc; no DOM access; logs captured) ---
