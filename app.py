@@ -10,7 +10,7 @@ from flask_login import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
-import csv, io, random
+import csv, io, random, json
 from sqlalchemy import or_, func
 from werkzeug.exceptions import abort
 from puzzles.routes import register_puzzle_routes
@@ -87,6 +87,9 @@ class Challenge(db.Model):
     language = db.Column(db.String(40), default="General")
     difficulty = db.Column(db.String(30), default="Easy")
     topic = db.Column(db.String(60))
+    tags = db.Column(db.Text, default="")
+    status = db.Column(db.String(20), default="draft", nullable=False)
+    published_at = db.Column(db.DateTime, nullable=True)
     added_by = db.Column(db.Integer, db.ForeignKey("user.id"))
 
 class Submission(db.Model):
@@ -98,6 +101,7 @@ class Submission(db.Model):
 class Joke(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
+    entry_type = db.Column(db.String(20), default="fun", nullable=False)
 
 # New models for Dungeons feature
 class Dungeon(db.Model):
@@ -163,6 +167,9 @@ def _load_fun_csv():
     return _fun_cache["items"]
 
 def random_fun():
+    joke_row = Joke.query.order_by(db.func.random()).first()
+    if joke_row:
+        return {"type": joke_row.entry_type or "fun", "text": joke_row.text}
     items = _load_fun_csv()
     if not items:
         return {"type": "fun", "text": "Welcome to SyntaxSnacks!"}
@@ -178,7 +185,7 @@ def load_user(user_id):
 def get_daily_challenge_for_user(user: User):
     """Return the first unsolved challenge for the user (simple baseline)."""
     solved_ids = {s.challenge_id for s in Submission.query.filter_by(user_id=user.id).all()}
-    for ch in Challenge.query.order_by(Challenge.id.asc()):
+    for ch in Challenge.query.filter_by(status="published").order_by(Challenge.id.asc()):
         if ch.id not in solved_ids:
             return ch
     return None
@@ -213,7 +220,10 @@ def check_and_complete_dungeon(user: User, challenge: Challenge):
         return None
 
     # Get all challenge IDs for this dungeon's topic
-    dungeon_challenge_ids = {c.id for c in Challenge.query.filter_by(topic=dungeon.topic).all()}
+    dungeon_challenge_ids = {
+        c.id
+        for c in Challenge.query.filter_by(topic=dungeon.topic, status="published").all()
+    }
     solved_challenge_ids = {s.challenge_id for s in Submission.query.filter_by(user_id=user.id).all()}
 
     if dungeon_challenge_ids.issubset(solved_challenge_ids):
@@ -352,18 +362,19 @@ def dungeons_list():
     # Get all dungeons, ordered by unlock XP
     all_dungeons = Dungeon.query.order_by(Dungeon.unlock_xp).all()
 
-    # Get total challenges per topic
+    # Get total published challenges per topic
     total_challenges_by_topic = dict(
         db.session.query(Challenge.topic, func.count(Challenge.id))
+        .filter(Challenge.status == "published")
         .group_by(Challenge.topic)
         .all()
     )
 
-    # Get user's solved challenges per topic
+    # Get user's solved published challenges per topic
     solved_challenges_by_topic = dict(
         db.session.query(Challenge.topic, func.count(Submission.id))
         .join(Challenge, Challenge.id == Submission.challenge_id)
-        .filter(Submission.user_id == current_user.id)
+        .filter(Submission.user_id == current_user.id, Challenge.status == "published")
         .group_by(Challenge.topic)
         .all()
     )
@@ -392,7 +403,11 @@ def dungeon_view(dungeon_id):
         return redirect(url_for("dungeons_list"))
 
     # Get challenges for this dungeon's topic
-    challenges = Challenge.query.filter_by(topic=dungeon.topic).order_by(Challenge.id).all()
+    challenges = (
+        Challenge.query.filter_by(topic=dungeon.topic, status="published")
+        .order_by(Challenge.id)
+        .all()
+    )
     solved_challenge_ids = {s.challenge_id for s in Submission.query.filter_by(user_id=current_user.id).all()}
 
     # Check if all challenges in this dungeon are solved
@@ -420,6 +435,85 @@ def _parse_int_or_none(raw):
         return int(raw)
     except (TypeError, ValueError):
         return None
+
+CHALLENGE_STATUSES = {"draft", "published"}
+
+
+def _normalize_tags(raw: str) -> str:
+    parts = [p.strip() for p in (raw or "").split(",") if p and p.strip()]
+    return ",".join(parts)
+
+
+def _validate_challenge_row(row: dict):
+    """Clean and validate a row coming from CSV/import payload."""
+    def _clean(val):
+        return (val or "").strip()
+
+    title = _clean(row.get("title"))
+    prompt = _clean(row.get("prompt"))
+    hints = _clean(row.get("hints"))
+    solution = _clean(row.get("solution"))
+    language = _clean(row.get("language") or "General") or "General"
+    difficulty = _clean(row.get("difficulty") or "Easy") or "Easy"
+    topic = _clean(row.get("topic"))
+    tags = _normalize_tags(row.get("tags", ""))
+    status = (_clean(row.get("status")) or "draft").lower()
+    pub_raw = _clean(row.get("published_at"))
+
+    errors = []
+    if not title:
+        errors.append("Title is required.")
+    if not prompt:
+        errors.append("Prompt is required.")
+    if len(title) > 200:
+        errors.append("Title exceeds 200 characters.")
+    if len(language) > 40:
+        errors.append("Language exceeds 40 characters.")
+    if len(difficulty) > 30:
+        errors.append("Difficulty exceeds 30 characters.")
+    if len(topic) > 60:
+        errors.append("Topic exceeds 60 characters.")
+    if status not in CHALLENGE_STATUSES:
+        errors.append("Status must be draft or published.")
+
+    parsed_published_at = None
+    if pub_raw:
+        try:
+            parsed_published_at = datetime.strptime(pub_raw, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            errors.append("published_at must be YYYY-MM-DD.")
+
+    cleaned = {
+        "title": title,
+        "prompt": prompt,
+        "hints": hints,
+        "solution": solution,
+        "language": language,
+        "difficulty": difficulty,
+        "topic": topic,
+        "tags": tags,
+        "status": status if status in CHALLENGE_STATUSES else "draft",
+        "published_at": parsed_published_at,
+        "published_at_raw": pub_raw,
+    }
+    return cleaned, errors
+
+
+def _prepare_challenge_preview(rows):
+    preview = []
+    for idx, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            row = {}
+        cleaned, errors = _validate_challenge_row(row)
+        preview.append(
+            {
+                "index": idx,
+                "data": cleaned,
+                "errors": errors,
+                "is_valid": len(errors) == 0,
+            }
+        )
+    return preview
 
 
 @app.route("/admin/users")
@@ -562,7 +656,44 @@ def admin_adjust_user_stats(user_id):
     return redirect(url_for("admin_user_detail", user_id=user.id))
 
 
-# ---- Admin: add single challenge
+# ---- Admin: challenges
+@app.route("/admin/challenges")
+@login_required
+def admin_challenges():
+    _guard_admin()
+    search = request.args.get("search", "").strip()
+    status_filter = request.args.get("status", "all").lower()
+    tag_filter = request.args.get("tag", "").strip()
+    page = request.args.get("page", 1, type=int)
+
+    query = Challenge.query
+    if search:
+        like = f"%{search.lower()}%"
+        query = query.filter(func.lower(Challenge.title).like(like))
+    if status_filter in CHALLENGE_STATUSES:
+        query = query.filter(Challenge.status == status_filter)
+    if tag_filter:
+        query = query.filter(func.lower(Challenge.tags).like(f"%{tag_filter.lower()}%"))
+
+    pagination = query.order_by(Challenge.id.desc()).paginate(
+        page=page, per_page=25, error_out=False
+    )
+    status_counts = dict(
+        db.session.query(Challenge.status, func.count(Challenge.id))
+        .group_by(Challenge.status)
+        .all()
+    )
+    return render_template(
+        "admin/challenges_list.html",
+        challenges=pagination.items,
+        pagination=pagination,
+        search=search,
+        status_filter=status_filter,
+        tag_filter=tag_filter,
+        status_counts=status_counts,
+    )
+
+
 @app.route("/admin/challenge/new", methods=["GET", "POST"])
 @login_required
 def admin_add_challenge():
@@ -570,6 +701,11 @@ def admin_add_challenge():
         flash("Admin only.")
         return redirect(url_for("index"))
     if request.method == "POST":
+        status = (request.form.get("status") or "draft").strip().lower()
+        if status not in CHALLENGE_STATUSES:
+            status = "draft"
+        tags = _normalize_tags(request.form.get("tags", ""))
+        published_at = datetime.now(timezone.utc) if status == "published" else None
         ch = Challenge(
             title=request.form["title"].strip(),
             prompt=request.form["prompt"].strip(),
@@ -578,6 +714,9 @@ def admin_add_challenge():
             language=request.form.get("language", "General").strip(),
             difficulty=request.form.get("difficulty", "Easy").strip(),
             topic=request.form.get("topic", "").strip(),
+            tags=tags,
+            status=status,
+            published_at=published_at,
             added_by=current_user.id,
         )
         db.session.add(ch)
@@ -586,7 +725,7 @@ def admin_add_challenge():
         return redirect(url_for("admin_add_challenge"))
     return render_template("admin_add_challenge.html")
 
-# ---- Admin: bulk import challenges from CSV
+
 @app.route("/admin/challenges/import", methods=["GET", "POST"])
 @login_required
 def admin_import_challenges():
@@ -594,38 +733,100 @@ def admin_import_challenges():
         flash("Admin only.")
         return redirect(url_for("index"))
     if request.method == "POST":
+        payload = request.form.get("payload")
+        if payload:
+            try:
+                raw_rows = json.loads(payload)
+            except json.JSONDecodeError:
+                flash("Upload payload could not be read. Please re-upload the CSV.")
+                return redirect(url_for("admin_import_challenges"))
+            if not isinstance(raw_rows, list):
+                flash("Upload payload was malformed. Please re-upload the CSV.")
+                return redirect(url_for("admin_import_challenges"))
+
+            preview_rows = _prepare_challenge_preview(raw_rows)
+            valid_rows = [row for row in preview_rows if row["is_valid"]]
+            invalid_count = len(preview_rows) - len(valid_rows)
+
+            if not valid_rows:
+                flash("No valid rows to import.")
+                return render_template(
+                    "admin/challenges_import_preview.html",
+                    preview_rows=preview_rows,
+                    payload=payload,
+                    source_filename=request.form.get("source_filename"),
+                )
+
+            try:
+                with db.session.begin():
+                    for row in valid_rows:
+                        data = row["data"]
+                        published_at = data["published_at"]
+                        if data["status"] == "published" and not published_at:
+                            published_at = datetime.now(timezone.utc)
+                        ch = Challenge(
+                            title=data["title"],
+                            prompt=data["prompt"],
+                            solution=data["solution"],
+                            hints=data["hints"],
+                            language=data["language"],
+                            difficulty=data["difficulty"],
+                            topic=data["topic"],
+                            tags=data["tags"],
+                            status=data["status"],
+                            published_at=published_at,
+                            added_by=current_user.id,
+                        )
+                        db.session.add(ch)
+                flash(f"Imported {len(valid_rows)} challenges. Skipped {invalid_count} invalid rows.")
+                return redirect(url_for("admin_challenges"))
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Import failed: {e}")
+                return render_template(
+                    "admin/challenges_import_preview.html",
+                    preview_rows=preview_rows,
+                    payload=payload,
+                    source_filename=request.form.get("source_filename"),
+                )
+
         file = request.files.get("file")
         if not file or not file.filename.lower().endswith(".csv"):
             flash("Please upload a CSV file.")
             return redirect(url_for("admin_import_challenges"))
+
         try:
             stream = io.StringIO(file.stream.read().decode("utf-8-sig"))
             reader = csv.DictReader(stream)
-            count = 0
+            rows = []
             for row in reader:
-                title = (row.get("title") or "").strip()
-                prompt = (row.get("prompt") or "").strip()
-                if not title or not prompt:
+                if not any((v or "").strip() for v in row.values()):
                     continue
-                ch = Challenge(
-                    title=title,
-                    prompt=prompt,
-                    solution=(row.get("solution") or "").strip(),
-                    hints=(row.get("hints") or "").strip(),
-                    language=(row.get("language") or "General").strip(),
-                    difficulty=(row.get("difficulty") or "Easy").strip(),
-                    topic=(row.get("topic") or "").strip(),
-                    added_by=current_user.id,
-                )
-                db.session.add(ch)
-                count += 1
-            db.session.commit()
-            flash(f"Imported {count} challenges.")
+                cleaned_row = {
+                    (k or "").strip(): (v or "")
+                    for k, v in row.items()
+                    if k is not None
+                }
+                rows.append(cleaned_row)
+
+            if not rows:
+                flash("CSV contained no rows.")
+                return redirect(url_for("admin_import_challenges"))
+
+            preview_rows = _prepare_challenge_preview(rows)
+            payload = json.dumps(rows)
+            return render_template(
+                "admin/challenges_import_preview.html",
+                preview_rows=preview_rows,
+                payload=payload,
+                source_filename=file.filename,
+            )
         except Exception as e:
-            db.session.rollback()
             flash(f"Import failed: {e}")
-        return redirect(url_for("admin_import_challenges"))
-    return render_template("admin_import_challenges.html")
+            return redirect(url_for("admin_import_challenges"))
+
+    return render_template("admin/challenges_import.html")
+
 
 @app.route("/admin/challenges/example.csv")
 @login_required
@@ -634,10 +835,10 @@ def download_challenge_csv_example():
         flash("Admin only.")
         return redirect(url_for("index"))
     csv_text = (
-        "title,prompt,solution,hints,language,difficulty,topic\n"
+        "title,prompt,hints,solution,tags,status,published_at\n"
         "Reverse String,Write a function that reverses a string.,"
-        "Python: s[::-1]; JS: str.split('').reverse().join(''),"
-        "Think about slicing or stacks.,General,Easy,strings\n"
+        "Think about slicing or stacks.,Python: s[::-1]; JS: str.split('').reverse().join(''),"
+        "strings,published,2024-01-01\n"
     )
     return (
         csv_text,
@@ -647,6 +848,101 @@ def download_challenge_csv_example():
             "Content-Disposition": 'attachment; filename="challenges_example.csv"',
         },
     )
+
+
+@app.post("/admin/challenges/<int:challenge_id>/publish")
+@login_required
+def admin_publish_challenge(challenge_id):
+    _guard_admin()
+    ch = Challenge.query.get_or_404(challenge_id)
+    action = request.form.get("action", "publish")
+
+    if action == "unpublish":
+        ch.status = "draft"
+        ch.published_at = None
+        msg = f"Unpublished {ch.title}."
+    else:
+        ch.status = "published"
+        ch.published_at = datetime.now(timezone.utc)
+        msg = f"Published {ch.title}."
+
+    db.session.commit()
+    flash(msg)
+    next_url = request.form.get("next") or url_for("admin_challenges")
+    return redirect(next_url)
+
+# ---- Admin: Fun cards editor
+@app.route("/admin/fun", methods=["GET", "POST"])
+@login_required
+def admin_fun_cards():
+    _guard_admin()
+    if request.method == "POST":
+        upload = request.files.get("file")
+        if upload and upload.filename.lower().endswith(".csv"):
+            try:
+                stream = io.StringIO(upload.stream.read().decode("utf-8-sig"))
+                reader = csv.DictReader(stream)
+                count = 0
+                for row in reader:
+                    text = (row.get("text") or "").strip()
+                    if not text:
+                        continue
+                    entry_type = (row.get("entry_type") or "fun").strip().lower()
+                    if entry_type not in {"fun", "fact"}:
+                        entry_type = "fun"
+                    db.session.add(Joke(text=text, entry_type=entry_type))
+                    count += 1
+                db.session.commit()
+                flash(f"Imported {count} fun cards.")
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Import failed: {e}")
+            return redirect(url_for("admin_fun_cards"))
+
+        text = (request.form.get("text") or "").strip()
+        entry_type = (request.form.get("entry_type") or "fun").strip().lower()
+        if entry_type not in {"fun", "fact"}:
+            entry_type = "fun"
+        if not text:
+            flash("Text is required.")
+        else:
+            db.session.add(Joke(text=text, entry_type=entry_type))
+            db.session.commit()
+            flash("Fun card added.")
+        return redirect(url_for("admin_fun_cards"))
+
+    jokes = Joke.query.order_by(Joke.id.desc()).all()
+    return render_template("admin/fun_cards.html", jokes=jokes)
+
+
+@app.post("/admin/fun/<int:joke_id>/delete")
+@login_required
+def admin_delete_fun_card(joke_id):
+    _guard_admin()
+    joke = Joke.query.get_or_404(joke_id)
+    db.session.delete(joke)
+    db.session.commit()
+    flash("Fun card deleted.")
+    return redirect(url_for("admin_fun_cards"))
+
+
+@app.route("/admin/fun/export.csv")
+@login_required
+def admin_fun_cards_export():
+    _guard_admin()
+    jokes = Joke.query.order_by(Joke.id.asc()).all()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "entry_type", "text"])
+    for j in jokes:
+        writer.writerow([j.id, j.entry_type or "fun", j.text])
+    csv_data = output.getvalue()
+    output.close()
+    headers = {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": 'attachment; filename="fun_cards.csv"',
+    }
+    return Response(csv_data, headers=headers)
 
 # ---- Admin: Contact
 class Message(db.Model):
@@ -836,6 +1132,38 @@ def _ensure_user_schema():
                 "UPDATE user SET created_at = datetime('now') WHERE created_at IS NULL"
             )
 
+def _ensure_joke_schema():
+    """Ensure Joke has entry_type for fun/fact categorization."""
+    with db.engine.begin() as conn:
+        cols = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(joke);")
+        }
+        if "entry_type" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE joke ADD COLUMN entry_type VARCHAR(20) NOT NULL DEFAULT 'fun'"
+            )
+
+def _ensure_challenge_schema():
+    """Ensure recently added Challenge columns exist for older SQLite DBs."""
+    with db.engine.begin() as conn:
+        cols = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(challenge);")
+        }
+        if "tags" not in cols:
+            conn.exec_driver_sql("ALTER TABLE challenge ADD COLUMN tags TEXT DEFAULT ''")
+        if "status" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE challenge ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'draft'"
+            )
+            conn.exec_driver_sql("UPDATE challenge SET status = 'published' WHERE status IS NULL")
+        if "published_at" not in cols:
+            conn.exec_driver_sql("ALTER TABLE challenge ADD COLUMN published_at DATETIME")
+            conn.exec_driver_sql(
+                "UPDATE challenge SET published_at = datetime('now') WHERE status = 'published' AND published_at IS NULL"
+            )
+
 
 # -----------------------------------------------------------------------------
 # Seed
@@ -843,6 +1171,8 @@ def _ensure_user_schema():
 def seed_data():
     db.create_all()
     _ensure_user_schema()
+    _ensure_joke_schema()
+    _ensure_challenge_schema()
     # Enable WAL for better concurrency (SQLite)
     with db.engine.connect() as conn:
         conn.exec_driver_sql("PRAGMA journal_mode=WAL;")
@@ -867,12 +1197,14 @@ def seed_data():
                 language="General",
                 difficulty="Easy",
                 topic="strings",
+                status="published",
+                published_at=datetime.now(timezone.utc),
             )
         )
     # default joke
     if Joke.query.count() == 0:
         db.session.add(
-            Joke(text="There are 10 kinds of people: those who understand binary and those who don't.")
+            Joke(text="There are 10 kinds of people: those who understand binary and those who don't.", entry_type="fun")
         )
     # default dungeons
     if Dungeon.query.count() == 0:
