@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="glass">
+  <h2>Fun Cards (Home Page)</h2>
+  <p>Add, view, or remove the jokes/facts shown on the home page.</p>
+
+  <div class="glass" style="padding:14px; margin:12px 0; background:rgba(0,0,0,0.12);">
+    <form method="post" style="display:grid; gap:10px; grid-template-columns:1fr;" enctype="multipart/form-data">
+      <label>Type
+        <select name="entry_type">
+          <option value="fun">Fun</option>
+          <option value="fact">Fact</option>
+        </select>
+      </label>
+      <label>Text
+        <textarea name="text" rows="3" placeholder="Something witty or interesting"></textarea>
+      </label>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <button class="btn-primary" type="submit">Add card</button>
+        <span style="color:#94b5c9;">or upload CSV</span>
+        <input type="file" name="file" accept=".csv" style="max-width:220px;">
+        <small style="color:#789;">CSV headers: text, entry_type (fun/fact)</small>
+        <a class="btn" href="{{ url_for('admin_fun_cards_export') }}">Export CSV</a>
+      </div>
+    </form>
+  </div>
+
+  {% if jokes %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Type</th>
+            <th>Text</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for j in jokes %}
+          <tr>
+            <td>{{ j.id }}</td>
+            <td>{{ j.entry_type or 'fun' }}</td>
+            <td>{{ j.text }}</td>
+            <td style="text-align:right;">
+              <form method="post" action="{{ url_for('admin_delete_fun_card', joke_id=j.id) }}">
+                <button class="btn" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p>No fun cards yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
