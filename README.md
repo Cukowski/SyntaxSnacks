@@ -81,7 +81,7 @@ For detailed information on specific topics, please see the documents below.
 
 ## Roadmap / Next Steps
 
-* ✏️ **Answer box / sandbox** on Dashboard (capture notes/solutions; optional code run in a safe service later).
+* ✏️ **Answer box / sandbox** on Challenges (capture notes/solutions; optional code run in a safe service later).
 * 🧑‍🤝‍🧑 **Community** (comments, reactions, challenge voting).
 * 🧩 **Categories & filters** on challenges.
 * 🤖 **LLM assist** (hint generation, explanation, solution review).

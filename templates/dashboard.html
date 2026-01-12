@@ -15,9 +15,11 @@
         <select id="lang">
           <option value="js">JavaScript</option>
           <option value="py">Python</option>
+          <option value="txt">Other (notes)</option>
         </select>
         <button class="btn-primary" id="runBtn">Run</button>
       </div>
+      <div id="runner-note" class="runner-note"></div>
       <textarea id="code" rows="10" placeholder="// write a function solve(input) { ... }"></textarea>
       <pre id="output" class="card" style="min-height:100px; margin-top:10px;"></pre>
     </div>
@@ -27,7 +29,7 @@
     {% endif %}
     {% if challenge.solution %}
       <button onclick="toggle('solution')" class="ghost" style="margin-left:6px">Reveal Solution</button>
-      <div id="solution" style="display:none;margin-top:10px" class="card"><strong>Solution:</strong><pre style="white-space: pre-wrap">{{ challenge.solution }}</pre></div>
+      <div id="solution" style="display:none;margin-top:10px" class="card"><strong>Solution:</strong><pre class="code-block">{{ challenge.solution }}</pre></div>
     {% endif %}
     <form method="post" action="{{ url_for('submit_challenge', challenge_id=challenge.id) }}" style="margin-top:12px">
       <button type="submit" class="btn-primary">Mark as Solved (+10 XP)</button>

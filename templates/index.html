@@ -10,7 +10,7 @@
     </div>
     <p style="margin-top:12px">
       {% if not current_user.is_authenticated %}<a class="btn-primary" href="{{ url_for('signup') }}">Get Started</a>
-      {% else %}<a class="btn-primary" href="{{ url_for('dashboard') }}">Go to Dashboard</a>{% endif %}
+      {% else %}<a class="btn-primary" href="{{ url_for('dashboard') }}">Go to Challenges</a>{% endif %}
     </p>
     <div class="fun-card" style="margin-top:14px">
       <strong id="fun-type">{{ fun.type|title }}</strong>: <span id="fun-text">{{ fun.text }}</span>

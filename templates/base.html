@@ -28,7 +28,7 @@
         <!-- Links -->
         <div id="nav-links" class="links">
           <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint=='index' else '' }}">Home</a>
-          <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint=='dashboard' else '' }}">Dashboard</a>
+          <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint=='dashboard' else '' }}">Challenges</a>
           <a href="{{ url_for('dungeons_list') }}" class="{{ 'active' if request.endpoint in ['dungeons_list', 'dungeon_view'] else '' }}">Explorer</a>
           <a href="{{ url_for('puzzles_hub') }}" class="{{ 'active' if request.endpoint.startswith('puzzle') else '' }}">Puzzles</a>
           <a href="{{ url_for('leaderboard') }}" class="{{ 'active' if request.endpoint=='leaderboard' else '' }}">Leaderboard</a>
@@ -204,6 +204,7 @@
         const langSel = document.getElementById('lang');
         const code = document.getElementById('code');
         const out = document.getElementById('output');
+        const runnerNote = document.getElementById('runner-note');
 
         const starter = {
           js: `// Write a function solve(input) and return the result
@@ -216,12 +217,33 @@
     def solve(input):
         # example: reverse string
         return str(input)[::-1]
-    # You can also print("hello") to append output`
+    # You can also print("hello") to append output`,
+          txt: `Write your solution in any language here.
+This mode does not execute code.`
         };
-        code.value = starter[langSel.value];
-        langSel.addEventListener('change', () => { code.value = starter[langSel.value]; });
+        const applyMode = () => {
+          const lang = langSel.value;
+          code.value = starter[lang] || '';
+          const isScratch = lang === 'txt';
+          runBtn.disabled = isScratch;
+          if (runnerNote) {
+            runnerNote.textContent = isScratch
+              ? 'Scratchpad mode: no runner available.'
+              : '';
+          }
+          if (isScratch) {
+            out.textContent = 'Use this editor to draft solutions in any language and compare with the solution.';
+            out.className = 'card';
+          } else {
+            out.textContent = '';
+            out.className = 'card';
+          }
+        };
+        applyMode();
+        langSel.addEventListener('change', applyMode);
 
         runBtn.addEventListener('click', async () => {
+          if (langSel.value === 'txt') return;
           out.textContent = 'Running...';
           const sampleInput = 'hello';
           let result = (langSel.value === 'js')

@@ -67,6 +67,10 @@ body{
 button, .btn, .btn-primary {
   cursor: pointer;
 }
+button:disabled, .btn:disabled, .btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
 
 /* Secondary ghost buttons (e.g., Reveal/Hint toggles) */
 button.ghost {
@@ -96,6 +100,20 @@ button.ghost {
 }
 #runner .ok { border-left: 4px solid #2bd39a; }
 #runner .err { border-left: 4px solid #ff6b6b; }
+#runner .runner-note{
+  color: #9ab3c7;
+  margin-top: var(--space-1);
+  font-size: 0.9rem;
+}
+pre.code-block{
+  background: #0e1420;
+  color: #d9f0ff;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 12px;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 
 /* ===== Layout ===== */
 

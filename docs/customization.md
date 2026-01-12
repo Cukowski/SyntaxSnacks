@@ -12,4 +12,4 @@ You can customize several aspects of the application to fit your needs.
 
 *   **Daily Challenge Logic**: The `get_daily_challenge_for_user()` function in `app.py` currently returns the first unsolved challenge for a user. This can be replaced with more complex logic, such as being date-based, random, or following a specific curriculum path.
 
-*   **In-browser Runner**: The sandbox UI is in `templates/dashboard.html`. The JavaScript wiring for the sandbox (including the Pyodide and JS runners) is in `templates/base.html`.
+*   **In-browser Runner**: The sandbox UI is in `templates/dashboard.html` (Challenges page). The JavaScript wiring for the sandbox (including the Pyodide and JS runners) is in `templates/base.html`.
