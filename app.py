@@ -489,7 +489,8 @@ def _normalize_tags(raw: str) -> str:
     return ",".join(parts)
 
 def _normalize_topic(raw: str) -> str:
-    return (raw or "").strip().lower()
+    cleaned = (raw or "").strip().lower()
+    return cleaned or None
 
 def _challenge_dedupe_key(cleaned: dict):
     return (cleaned["title"].strip().lower(), cleaned["prompt"].strip().lower())
@@ -534,7 +535,7 @@ def _validate_challenge_row(row: dict):
         errors.append("Language exceeds 40 characters.")
     if len(difficulty) > 30:
         errors.append("Difficulty exceeds 30 characters.")
-    if len(topic) > 60:
+    if topic and len(topic) > 60:
         errors.append("Topic exceeds 60 characters.")
     if status not in CHALLENGE_STATUSES:
         errors.append("Status must be draft or published.")
@@ -1352,6 +1353,15 @@ def seed_data():
     # Enable WAL for better concurrency (SQLite)
     with db.engine.connect() as conn:
         conn.exec_driver_sql("PRAGMA journal_mode=WAL;")
+    # Normalize existing topic values to avoid case-sensitive mismatches.
+    for dungeon in Dungeon.query.all():
+        normalized_topic = _normalize_topic(dungeon.topic)
+        if normalized_topic != dungeon.topic:
+            dungeon.topic = normalized_topic
+    for challenge in Challenge.query.all():
+        normalized_topic = _normalize_topic(challenge.topic)
+        if normalized_topic != challenge.topic:
+            challenge.topic = normalized_topic
 
     # admin
     if not User.query.filter_by(username="admin").first():
