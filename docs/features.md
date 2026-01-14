@@ -3,7 +3,7 @@
 ## Core Features
 *   🔐 **Auth** — Sign up, login, logout (Flask-Login).
 *   🧠 **Daily Challenge Flow** — Shows the next unsolved challenge based on a simple progression.
-*   🗺️ **Dungeon Explorer** — Explore themed "islands" of challenges and earn bonus XP for clearing them.
+	* 🗺️ **Dungeon Explorer** — Explore themed "islands" of challenges and earn bonus XP for clearing them. Dungeons are available for various topics, including Strings, Arrays, Search/Sort, Stack/Queue, Math, DP, and SQL.
 *   🧩 **Puzzle Arcade** — Play interactive mini-games like "Bit Flipper" to test fundamental knowledge.
 *   ⭐ **Gamification** — “Mark as solved (+10 XP)” updates XP & streak logic.
 *   🏆 **Leaderboard** — Sorted by XP, then streak.

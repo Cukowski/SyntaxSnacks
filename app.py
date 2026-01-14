@@ -1429,21 +1429,60 @@ def seed_data():
             Joke(text="There are 10 kinds of people: those who understand binary and those who don't.", entry_type="fun")
         )
     # default dungeons
-    if Dungeon.query.count() == 0:
-        db.session.add(
-            Dungeon(
-                name="The String Sanctum",
-                description="A series of challenges to test your string manipulation mastery.",
-                topic="strings",
-                unlock_xp=0,
-                reward_xp=50
-            )
-        )
-        db.session.add(
-            Dungeon(name="The Logic Labyrinth", description="Puzzles that require algorithmic thinking and data structures.", topic="algorithms", unlock_xp=50, reward_xp=100)
-        )
+    dungeons_to_seed = [
+        {
+            "name": "The String Sanctum",
+            "description": "A series of challenges to test your string manipulation mastery.",
+            "topic": "strings", "unlock_xp": 0, "reward_xp": 50
+        },
+        {
+            "name": "The Logic Labyrinth",
+            "description": "Puzzles that require algorithmic thinking and data structures.",
+            "topic": "algorithms", "unlock_xp": 50, "reward_xp": 100
+        },
+        {
+            "name": "The Array Archipelago",
+            "description": "Challenges focused on array manipulation and traversal.",
+            "topic": "arrays", "unlock_xp": 20, "reward_xp": 75
+        },
+        {
+            "name": "The Searching Spire",
+            "description": "Tasks involving searching and sorting algorithms.",
+            "topic": "search/sort", "unlock_xp": 30, "reward_xp": 75
+        },
+        {
+            "name": "The Stack & Queue Station",
+            "description": "Puzzles based on stack and queue data structures.",
+            "topic": "stack/queue", "unlock_xp": 40, "reward_xp": 75
+        },
+        {
+            "name": "The Mathematician's Maze",
+            "description": "Problems that require mathematical insight and algorithms.",
+            "topic": "math", "unlock_xp": 60, "reward_xp": 100
+        },
+        {
+            "name": "The Dynamic Programming Dojo",
+            "description": "A series of challenges on dynamic programming.",
+            "topic": "dp", "unlock_xp": 100, "reward_xp": 150
+        },
+        {
+            "name": "The SQL Summit",
+            "description": "Test your database skills with these SQL challenges.",
+            "topic": "sql", "unlock_xp": 80, "reward_xp": 120
+        },
+        {
+            "name": "The Regex Reef",
+            "description": "Master the art of regular expressions.",
+            "topic": "regex", "unlock_xp": 70, "reward_xp": 100
+        },
+    ]
+
+    for d_data in dungeons_to_seed:
+        if not Dungeon.query.filter_by(name=d_data["name"]).first():
+            db.session.add(Dungeon(**d_data))
 
     db.session.commit()
+
 
 # -----------------------------------------------------------------------------
 # Main
