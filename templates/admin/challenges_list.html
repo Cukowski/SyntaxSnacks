@@ -67,6 +67,7 @@
                   <button class="btn" type="submit">Unpublish</button>
                 {% else %}
                   <button class="btn-primary" type="submit">Publish</button>
+                  <a href="{{ url_for('admin_edit_challenge', challenge_id=ch.id) }}" class="btn">Edit</a>
                 {% endif %}
               </form>
             </td>

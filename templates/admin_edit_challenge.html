@@ -1,0 +1,25 @@
+{% extends 'base.html' %}{% block content %}
+<div class="glass"><h2>Edit Challenge</h2>
+<form method="post">
+  <label>Title</label><input name="title" required value="{{ challenge.title }}">
+  <label>Language</label><input name="language" placeholder="Python / JS / General" value="{{ challenge.language }}">
+  <label>Difficulty</label>
+  <select name="difficulty">
+    <option {% if challenge.difficulty == 'Easy' %}selected{% endif %}>Easy</option>
+    <option {% if challenge.difficulty == 'Medium' %}selected{% endif %}>Medium</option>
+    <option {% if challenge.difficulty == 'Hard' %}selected{% endif %}>Hard</option>
+  </select>
+  <label>Topic</label><input name="topic" placeholder="strings" value="{{ challenge.topic }}">
+  <label>Tags (comma-separated)</label><input name="tags" placeholder="arrays, pointers" value="{{ challenge.tags }}">
+  <label>Status</label>
+  <select name="status">
+    <option value="draft" {% if challenge.status == 'draft' %}selected{% endif %}>Draft</option>
+    <option value="published" {% if challenge.status == 'published' %}selected{% endif %}>Published</option>
+  </select>
+  <small style="display:block; margin-top:-8px; color:#888;">Published challenges are visible immediately; draft keeps them hidden.</small>
+  <label>Prompt</label><textarea name="prompt" rows="6" required>{{ challenge.prompt }}</textarea>
+  <label>Hints</label><textarea name="hints" rows="3">{{ challenge.hints }}</textarea>
+  <label>Solution</label><textarea name="solution" rows="6">{{ challenge.solution }}</textarea>
+  <p style="margin-top:12px"><button class="btn-primary">Update</button></p>
+</form></div>
+{% endblock %}

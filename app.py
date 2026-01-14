@@ -789,6 +789,42 @@ def admin_add_challenge():
     return render_template("admin_add_challenge.html")
 
 
+@app.route("/admin/challenge/<int:challenge_id>/edit", methods=["GET", "POST"])
+@login_required
+def admin_edit_challenge(challenge_id):
+    if not admin_required():
+        flash("Admin only.")
+        return redirect(url_for("index"))
+    ch = Challenge.query.get_or_404(challenge_id)
+    if request.method == "POST":
+        status = (request.form.get("status") or "draft").strip().lower()
+        if status not in CHALLENGE_STATUSES:
+            status = "draft"
+        tags = _normalize_tags(request.form.get("tags", ""))
+        
+        # Only update published_at if status is changing to "published"
+        if status == "published" and ch.status != "published":
+            ch.published_at = datetime.now(timezone.utc)
+        elif status == "draft":
+            ch.published_at = None
+        
+        ch.title = request.form["title"].strip()
+        ch.prompt = request.form["prompt"].strip()
+        ch.solution = request.form.get("solution", "").strip()
+        ch.hints = request.form.get("hints", "").strip()
+        ch.language = request.form.get("language", "General").strip()
+        ch.difficulty = request.form.get("difficulty", "Easy").strip()
+        ch.topic = _normalize_topic(request.form.get("topic", ""))
+        ch.tags = tags
+        ch.status = status
+        
+        db.session.commit()
+        flash("Challenge updated.")
+        return redirect(url_for("admin_challenges"))
+    return render_template("admin_edit_challenge.html", challenge=ch)
+
+
+
 @app.route("/admin/challenges/import", methods=["GET", "POST"])
 @login_required
 def admin_import_challenges():

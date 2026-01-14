@@ -34,6 +34,7 @@
 | **Admin: User Detail**        | `/admin/users/<int:user_id>`    | Requires admin; view user details and audit log                 |
 | **Admin: Challenges**         | `/admin/challenges`             | Requires admin; manage challenges                               |
 | **Admin: New Challenge**      | `/admin/challenge/new`          | Requires admin                                                  |
+| **Admin: Edit Challenge**     | `/admin/challenge/<challenge_id>/edit` | Requires admin                                                 |
 | **Admin: Import CSV**         | `/admin/challenges/import`      | Requires admin                                                  |
 | **Admin: Export CSV**         | `/admin/challenges/export.csv`  | Requires admin                                                  |
 | **Admin: Fun Cards**          | `/admin/fun`                    | Requires admin; manage home page jokes/facts                    |
