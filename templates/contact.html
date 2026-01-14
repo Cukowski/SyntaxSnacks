@@ -1,8 +1,13 @@
 {% extends 'base.html' %}{% block content %}
 <div class="glass"><h2>Contact</h2>
 <form method="post" action="{{ url_for('contact') }}">
-  <label>Name</label><input name="name" required>
-  <label>Email</label><input name="email" type="email" required>
+  {% if current_user.is_authenticated %}
+    <label>Name</label><input name="name" placeholder="(optional)">
+    <label>Email</label><input name="email" type="email" placeholder="(optional)">
+  {% else %}
+    <label>Name</label><input name="name" placeholder="Your Name" required>
+    <label>Email</label><input name="email" type="email" placeholder="Your Email" required>
+  {% endif %}
   <label>Message</label><textarea name="message" rows="5" required></textarea>
   <p style="margin-top:12px"><button type="submit" class="btn-primary">Send</button></p>
 </form>

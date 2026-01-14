@@ -305,6 +305,12 @@ def contact():
         email = request.form.get("email", "").strip()
         body = request.form.get("message", "").strip()
 
+        if current_user.is_authenticated:
+            if not name:
+                name = current_user.username
+            if not email:
+                email = current_user.email
+        
         if not (name and email and body):
             flash(("contact", "Please fill out all fields."))  # stays on contact page
             return redirect(url_for("contact"))
