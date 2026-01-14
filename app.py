@@ -248,7 +248,7 @@ def check_and_complete_dungeon(user: User, challenge: Challenge):
     if not challenge.topic:
         return None # Challenge isn't part of a topic/dungeon
 
-    dungeon = Dungeon.query.filter_by(topic=challenge.topic).first()
+    dungeon = Dungeon.query.filter(func.lower(Dungeon.topic) == challenge.topic.lower()).first()
     if not dungeon:
         return None # No dungeon for this topic
 
@@ -259,7 +259,10 @@ def check_and_complete_dungeon(user: User, challenge: Challenge):
     # Get all challenge IDs for this dungeon's topic
     dungeon_challenge_ids = {
         c.id
-        for c in Challenge.query.filter_by(topic=dungeon.topic, status="published").all()
+        for c in Challenge.query.filter(
+            func.lower(Challenge.topic) == dungeon.topic.lower(),
+            Challenge.status == "published",
+        ).all()
     }
     solved_challenge_ids = {s.challenge_id for s in Submission.query.filter_by(user_id=user.id).all()}
 
@@ -401,25 +404,26 @@ def dungeons_list():
 
     # Get total published challenges per topic
     total_challenges_by_topic = dict(
-        db.session.query(Challenge.topic, func.count(Challenge.id))
+        db.session.query(func.lower(Challenge.topic), func.count(Challenge.id))
         .filter(Challenge.status == "published")
-        .group_by(Challenge.topic)
+        .group_by(func.lower(Challenge.topic))
         .all()
     )
 
     # Get user's solved published challenges per topic
     solved_challenges_by_topic = dict(
-        db.session.query(Challenge.topic, func.count(Submission.id))
+        db.session.query(func.lower(Challenge.topic), func.count(Submission.id))
         .join(Challenge, Challenge.id == Submission.challenge_id)
         .filter(Submission.user_id == current_user.id, Challenge.status == "published")
-        .group_by(Challenge.topic)
+        .group_by(func.lower(Challenge.topic))
         .all()
     )
 
     dungeon_data = []
     for d in all_dungeons:
-        total = total_challenges_by_topic.get(d.topic, 0)
-        solved = solved_challenges_by_topic.get(d.topic, 0)
+        topic_key = (d.topic or "").lower()
+        total = total_challenges_by_topic.get(topic_key, 0)
+        solved = solved_challenges_by_topic.get(topic_key, 0)
         progress = (solved / total * 100) if total > 0 else 0
         dungeon_data.append({
             "dungeon": d,
@@ -440,8 +444,12 @@ def dungeon_view(dungeon_id):
         return redirect(url_for("dungeons_list"))
 
     # Get challenges for this dungeon's topic
+    topic_key = (dungeon.topic or "").lower()
     challenges = (
-        Challenge.query.filter_by(topic=dungeon.topic, status="published")
+        Challenge.query.filter(
+            func.lower(Challenge.topic) == topic_key,
+            Challenge.status == "published",
+        )
         .order_by(Challenge.id)
         .all()
     )
@@ -480,6 +488,9 @@ def _normalize_tags(raw: str) -> str:
     parts = [p.strip() for p in (raw or "").split(",") if p and p.strip()]
     return ",".join(parts)
 
+def _normalize_topic(raw: str) -> str:
+    return (raw or "").strip().lower()
+
 def _challenge_dedupe_key(cleaned: dict):
     return (cleaned["title"].strip().lower(), cleaned["prompt"].strip().lower())
 
@@ -507,7 +518,7 @@ def _validate_challenge_row(row: dict):
     solution = _clean(row.get("solution"))
     language = _clean(row.get("language") or "General") or "General"
     difficulty = _clean(row.get("difficulty") or "Easy") or "Easy"
-    topic = _clean(row.get("topic"))
+    topic = _normalize_topic(row.get("topic"))
     tags = _normalize_tags(row.get("tags", ""))
     status = (_clean(row.get("status")) or "draft").lower()
     pub_raw = _clean(row.get("published_at"))
@@ -764,7 +775,7 @@ def admin_add_challenge():
             hints=request.form.get("hints", "").strip(),
             language=request.form.get("language", "General").strip(),
             difficulty=request.form.get("difficulty", "Easy").strip(),
-            topic=request.form.get("topic", "").strip(),
+            topic=_normalize_topic(request.form.get("topic", "")),
             tags=tags,
             status=status,
             published_at=published_at,
@@ -936,7 +947,7 @@ def download_challenge_csv_example():
         "title,prompt,hints,solution,language,difficulty,topic,tags,status,published_at\n"
         "Reverse String,Write a function that reverses a string.,"
         "Think about slicing or stacks.,Python: s[::-1]; JS: str.split('').reverse().join(''),"
-        "Python,Easy,Strings,strings,published,2024-01-01\n"
+        "Python,Easy,strings,strings,published,2024-01-01\n"
     )
     return (
         csv_text,
