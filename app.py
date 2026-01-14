@@ -870,57 +870,57 @@ def admin_import_challenges():
                 imported = 0
                 updated = 0
                 skipped_dupes = 0
-                with db.session.begin():
-                    for row in valid_rows:
-                        data = row["data"]
-                        key = _challenge_dedupe_key(data)
-                        if key in seen:
-                            skipped_dupes += 1
-                            continue
-                        seen.add(key)
+                for row in valid_rows:
+                    data = row["data"]
+                    key = _challenge_dedupe_key(data)
+                    if key in seen:
+                        skipped_dupes += 1
+                        continue
+                    seen.add(key)
 
-                        published_at = data["published_at"]
-                        if data["status"] == "published" and not published_at:
-                            published_at = datetime.now(timezone.utc)
-                        if data["status"] == "draft":
-                            published_at = None
+                    published_at = data["published_at"]
+                    if data["status"] == "published" and not published_at:
+                        published_at = datetime.now(timezone.utc)
+                    if data["status"] == "draft":
+                        published_at = None
 
-                        existing_ch = existing_map.get(key)
-                        if not existing_ch:
-                            title_matches = title_map.get(data["title"].strip().lower(), [])
-                            if len(title_matches) == 1:
-                                existing_ch = title_matches[0]
-                        if existing_ch and existing_ch.published_at and not data["published_at"] and data["status"] == "published":
-                            published_at = existing_ch.published_at
-                        if existing_ch:
-                            existing_ch.title = data["title"]
-                            existing_ch.prompt = data["prompt"]
-                            existing_ch.solution = data["solution"]
-                            existing_ch.hints = data["hints"]
-                            existing_ch.language = data["language"]
-                            existing_ch.difficulty = data["difficulty"]
-                            existing_ch.topic = data["topic"]
-                            existing_ch.tags = data["tags"]
-                            existing_ch.status = data["status"]
-                            existing_ch.published_at = published_at
-                            updated += 1
-                            continue
+                    existing_ch = existing_map.get(key)
+                    if not existing_ch:
+                        title_matches = title_map.get(data["title"].strip().lower(), [])
+                        if len(title_matches) == 1:
+                            existing_ch = title_matches[0]
+                    if existing_ch and existing_ch.published_at and not data["published_at"] and data["status"] == "published":
+                        published_at = existing_ch.published_at
+                    if existing_ch:
+                        existing_ch.title = data["title"]
+                        existing_ch.prompt = data["prompt"]
+                        existing_ch.solution = data["solution"]
+                        existing_ch.hints = data["hints"]
+                        existing_ch.language = data["language"]
+                        existing_ch.difficulty = data["difficulty"]
+                        existing_ch.topic = data["topic"]
+                        existing_ch.tags = data["tags"]
+                        existing_ch.status = data["status"]
+                        existing_ch.published_at = published_at
+                        updated += 1
+                        continue
 
-                        ch = Challenge(
-                            title=data["title"],
-                            prompt=data["prompt"],
-                            solution=data["solution"],
-                            hints=data["hints"],
-                            language=data["language"],
-                            difficulty=data["difficulty"],
-                            topic=data["topic"],
-                            tags=data["tags"],
-                            status=data["status"],
-                            published_at=published_at,
-                            added_by=current_user.id,
-                        )
-                        db.session.add(ch)
-                        imported += 1
+                    ch = Challenge(
+                        title=data["title"],
+                        prompt=data["prompt"],
+                        solution=data["solution"],
+                        hints=data["hints"],
+                        language=data["language"],
+                        difficulty=data["difficulty"],
+                        topic=data["topic"],
+                        tags=data["tags"],
+                        status=data["status"],
+                        published_at=published_at,
+                        added_by=current_user.id,
+                    )
+                    db.session.add(ch)
+                    imported += 1
+                db.session.commit()
                 flash(
                     "Imported {} challenges. Updated {} existing. Skipped {} duplicates. "
                     "Skipped {} invalid rows.".format(imported, updated, skipped_dupes, invalid_count)
