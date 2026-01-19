@@ -219,10 +219,13 @@ def random_fun():
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-def get_daily_challenge_for_user(user: User):
+def get_daily_challenge_for_user(user: User, difficulty: str | None = None):
     """Return the first unsolved challenge for the user (simple baseline)."""
     solved_ids = {s.challenge_id for s in Submission.query.filter_by(user_id=user.id).all()}
-    for ch in Challenge.query.filter_by(status="published").order_by(Challenge.id.asc()):
+    query = Challenge.query.filter_by(status="published")
+    if difficulty:
+        query = query.filter(func.lower(Challenge.difficulty) == difficulty.lower())
+    for ch in query.order_by(Challenge.id.asc()):
         if ch.id not in solved_ids:
             return ch
     return None
@@ -373,10 +376,18 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    ch = get_daily_challenge_for_user(current_user)
+    difficulty = (request.args.get("difficulty") or "").strip()
+    allowed_difficulties = {"easy", "medium", "hard"}
+    difficulty_filter = difficulty.lower() if difficulty.lower() in allowed_difficulties else ""
+    ch = get_daily_challenge_for_user(current_user, difficulty=difficulty_filter or None)
     joke_row = Joke.query.order_by(db.func.random()).first()
     joke = joke_row.text if joke_row else None
-    return render_template("dashboard.html", challenge=ch, joke=joke)
+    return render_template(
+        "dashboard.html",
+        challenge=ch,
+        joke=joke,
+        difficulty_filter=difficulty_filter,
+    )
 
 @app.route("/submit/<int:challenge_id>", methods=["POST"])
 @login_required

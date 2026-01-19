@@ -304,7 +304,6 @@
           ].join('\n')
         };
 
-        if (inputEl && !inputEl.value.trim()) inputEl.value = 'hello';
         langSel.value = (challengeLang.key === 'txt') ? 'txt' : 'auto';
 
         const activeLangKey = () => {
@@ -378,6 +377,16 @@
           }
           out.textContent = outputText;
           out.className = 'card ' + (result.ok ? 'ok' : 'err');
+        });
+
+        code.addEventListener('keydown', (event) => {
+          if (event.key !== 'Tab') return;
+          event.preventDefault();
+          const start = code.selectionStart;
+          const end = code.selectionEnd;
+          const insert = '  ';
+          code.value = code.value.substring(0, start) + insert + code.value.substring(end);
+          code.selectionStart = code.selectionEnd = start + insert.length;
         });
       });
     </script>

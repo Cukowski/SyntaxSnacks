@@ -5,6 +5,16 @@
     <div class="stat">🔥 Streak: <strong>{{ current_user.streak }}</strong></div>
     <div class="stat">⭐ XP: <strong>{{ current_user.xp }}</strong></div>
   </div>
+  <div class="card" style="margin-bottom: 16px;">
+    <strong>Pick a challenge level</strong>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+      <a class="btn {% if not difficulty_filter %}btn-primary{% endif %}" href="{{ url_for('dashboard') }}">All</a>
+      <a class="btn {% if difficulty_filter == 'easy' %}btn-primary{% endif %}" href="{{ url_for('dashboard', difficulty='easy') }}">Easy</a>
+      <a class="btn {% if difficulty_filter == 'medium' %}btn-primary{% endif %}" href="{{ url_for('dashboard', difficulty='medium') }}">Medium</a>
+      <a class="btn {% if difficulty_filter == 'hard' %}btn-primary{% endif %}" href="{{ url_for('dashboard', difficulty='hard') }}">Hard</a>
+    </div>
+    <p style="margin:8px 0 0 0; color:#b7c9da;">Use the buttons above to focus on a difficulty. We still deliver the next unsolved challenge within that level.</p>
+  </div>
   {% if challenge %}
     <h3>Today's Snack: {{ challenge.title }}</h3>
     <p style="white-space: pre-wrap">{{ challenge.prompt }}</p>
@@ -47,7 +57,7 @@
       <button type="submit" class="btn-primary">Mark as Solved (+10 XP)</button>
     </form>
   {% else %}
-    <p>No more challenges for now. Check back soon!</p>
+    <p>No challenges available for this level right now. Try another difficulty or check back soon!</p>
   {% endif %}
   {% if joke %}<div class="card joke" style="margin-top:14px">💡 {{ joke }}</div>{% endif %}
 </div>
