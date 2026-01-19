@@ -47,11 +47,7 @@
           <tr>
             {% set email = u.email or '—' %}
             <td>{{ u.username }}</td>
-<<<<<<< Updated upstream
-            <td title="{{ u.email or '' }}">{{ (u.email or '—')|truncate(32, True, '...') }}</td>
-=======
             <td class="user-email" title="{{ u.email or '' }}"><span class="truncate">{{ email[:22] ~ ('...' if email|length > 22 else '') }}</span></td>
->>>>>>> Stashed changes
             <td>{{ 'Admin' if u.is_admin else 'User' }}</td>
             <td>{{ 'Active' if u.active else 'Inactive' }}</td>
             <td>{{ u.xp }}</td>

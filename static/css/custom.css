@@ -196,8 +196,6 @@ footer{ color:#a8c0cf; padding:18px; }
 
 .table{ width:100%; border-collapse:collapse; }
 .table th,.table td{ padding:8px 10px; border-bottom:1px solid rgba(255,255,255,.12); }
-<<<<<<< Updated upstream
-=======
 .table-responsive{ overflow-x:auto; max-width:100%; }
 .table .user-email{
   width:clamp(140px, 22vw, 260px);
@@ -211,7 +209,6 @@ footer{ color:#a8c0cf; padding:18px; }
   white-space:nowrap;
   vertical-align:bottom;
 }
->>>>>>> Stashed changes
 
 .flash{
   background:#27c082; color:#0b1b2b;
