@@ -111,6 +111,7 @@
 
       <div class="panel">
         <p style="margin-top: 0; margin-bottom: 6px;">Pick the optimization to serve:</p>
+        <p class="note" style="margin-top: 0;">Only one option is both correct for all hidden cases <em>and</em> the fastest Big-O.</p>
         <div class="options-grid" id="options-grid">
           {% for opt in options %}
           <div class="option-card {% if is_completed and best_option == opt.id %}active locked{% endif %}" data-option-id="{{ opt.id }}">
