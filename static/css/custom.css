@@ -82,6 +82,45 @@ button.ghost {
 }
 
 /* Code runner */
+#runner .runner-toolbar{
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+#runner .runner-toolbar label{
+  font-weight: 600;
+  color: #c9ddf1;
+}
+#runner .runner-toolbar select{
+  background: #101622;
+  color: #d6e6ff;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+#runner .runner-grid{
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+#runner .runner-panel label,
+#runner .runner-output-label{
+  display: block;
+  margin: 10px 0 6px;
+  color: #c9ddf1;
+  font-weight: 600;
+}
+#runner textarea#input{
+  width: 100%;
+  border-radius: 12px;
+  background: #101622;
+  color: #d6e6ff;
+  border: 1px solid rgba(255,255,255,.14);
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 #runner textarea#code{
   width: 100%;
   border-radius: 12px;
@@ -104,6 +143,11 @@ button.ghost {
   color: #9ab3c7;
   margin-top: var(--space-1);
   font-size: 0.9rem;
+}
+@media (max-width: 720px){
+  #runner .runner-grid{
+    grid-template-columns: 1fr;
+  }
 }
 pre.code-block{
   background: #0e1420;

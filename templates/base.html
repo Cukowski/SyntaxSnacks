@@ -133,7 +133,7 @@
           };
           const onMsg = (ev) => done(ev.data);
 
-          let timeout = setTimeout(() => done({ ok:false, out:'Execution timed out.' }), 5000);
+          let timeout = setTimeout(() => done({ ok:false, out:'Execution timed out (5s).' }), 5000);
 
           function cleanup(){
             clearTimeout(timeout);
@@ -197,39 +197,150 @@
         }
       }
 
+      // ---- TypeScript: transpile to JS and run in sandbox ----
+      let _tsReady = null;
+
+      async function ensureTypeScript() {
+        if (_tsReady) return _tsReady;
+        _tsReady = new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = "https://cdn.jsdelivr.net/npm/typescript@5.4.5/lib/typescript.min.js";
+          s.onload = () => resolve(window.ts);
+          s.onerror = () => reject(new Error('Failed to load TypeScript compiler.'));
+          document.head.appendChild(s);
+        });
+        return _tsReady;
+      }
+
+      async function runTs(source, input) {
+        try {
+          const ts = await ensureTypeScript();
+          const transpiled = ts.transpileModule(source, {
+            compilerOptions: {
+              target: ts.ScriptTarget.ES2020,
+              module: ts.ModuleKind.ES2020
+            }
+          });
+          return await runJsSandbox(transpiled.outputText, input);
+        } catch (e) {
+          return { ok: false, out: String(e) };
+        }
+      }
+
       // --- Wire the UI on pages that have the runner ---
       document.addEventListener('DOMContentLoaded', () => {
         const runBtn = document.getElementById('runBtn');
         if (!runBtn) return;
+        const runner = document.getElementById('runner');
         const langSel = document.getElementById('lang');
         const code = document.getElementById('code');
+        const inputEl = document.getElementById('input');
         const out = document.getElementById('output');
         const runnerNote = document.getElementById('runner-note');
+        if (!langSel || !code || !out) return;
+
+        const challengeLangRaw = runner && runner.dataset.challengeLang
+          ? runner.dataset.challengeLang.trim()
+          : '';
+
+        const labels = {
+          js: 'JavaScript',
+          ts: 'TypeScript',
+          py: 'Python',
+          txt: 'Other (notes)'
+        };
+
+        const tokens = {
+          js: ['javascript', 'js', 'node', 'nodejs', 'ecmascript'],
+          ts: ['typescript', 'ts'],
+          py: ['python', 'py']
+        };
+
+        const resolveChallengeLang = (raw) => {
+          if (!raw) return { key: 'txt', reason: 'unspecified' };
+          const normalized = raw.toLowerCase();
+          const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const tokenMatches = (text, token) => {
+            const pattern = new RegExp(`(^|[^a-z0-9])${escapeRegex(token)}([^a-z0-9]|$)`);
+            return pattern.test(text);
+          };
+          for (const key of Object.keys(tokens)) {
+            if (tokens[key].some((t) => tokenMatches(normalized, t))) {
+              return { key, reason: 'supported' };
+            }
+          }
+          if (normalized.includes('general') || normalized.includes('any')) {
+            return { key: 'txt', reason: 'unspecified' };
+          }
+          return { key: 'txt', reason: 'unsupported' };
+        };
+
+        const challengeLang = resolveChallengeLang(challengeLangRaw);
 
         const starter = {
-          js: `// Write a function solve(input) and return the result
-    function solve(input){
-      // example: reverse string
-      return String(input).split('').reverse().join('');
-    }
-    // You can also use print('hello') to append output`,
-          py: `# Write a function solve(input) and return the result
-    def solve(input):
-        # example: reverse string
-        return str(input)[::-1]
-    # You can also print("hello") to append output`,
-          txt: `Write your solution in any language here.
-This mode does not execute code.`
+          js: [
+            '// Implement solve(input). Return a value to show it in Output.',
+            'function solve(input) {',
+            '  const text = String(input).trim();',
+            "  return text.split('').reverse().join('');",
+            '}'
+          ].join('\n'),
+          ts: [
+            '// Implement solve(input). Return a value to show it in Output.',
+            'function solve(input: string): string {',
+            '  const text = String(input).trim();',
+            "  return text.split('').reverse().join('');",
+            '}'
+          ].join('\n'),
+          py: [
+            '# Implement solve(input). Return a value to show it in Output.',
+            'def solve(input):',
+            '    text = str(input).strip()',
+            '    return text[::-1]'
+          ].join('\n'),
+          txt: [
+            'Notes mode: draft solutions in any language here.',
+            'This mode does not execute code.'
+          ].join('\n')
         };
+
+        if (inputEl && !inputEl.value.trim()) inputEl.value = 'hello';
+        langSel.value = (challengeLang.key === 'txt') ? 'txt' : 'auto';
+
+        const activeLangKey = () => {
+          const selected = langSel.value || 'txt';
+          return selected === 'auto' ? challengeLang.key : selected;
+        };
+
         const applyMode = () => {
-          const lang = langSel.value;
+          const lang = activeLangKey();
           code.value = starter[lang] || '';
           const isScratch = lang === 'txt';
           runBtn.disabled = isScratch;
           if (runnerNote) {
-            runnerNote.textContent = isScratch
-              ? 'Scratchpad mode: no runner available.'
-              : '';
+            let note = '';
+            if (langSel.value === 'auto') {
+              if (!challengeLangRaw) {
+                note = 'No challenge language specified. Pick a runnable language to execute.';
+              } else if (isScratch) {
+                note = `Challenge language: ${challengeLangRaw} isn't runnable in the browser. Notes mode is active.`;
+              } else {
+                note = `Auto: ${labels[lang]} (challenge language: ${challengeLangRaw}).`;
+              }
+            } else if (isScratch) {
+              if (challengeLang.reason === 'unsupported' && challengeLangRaw) {
+                note = `Challenge language: ${challengeLangRaw} isn't runnable in the browser. Notes mode is active.`;
+              } else if (challengeLang.reason === 'unspecified') {
+                note = challengeLangRaw
+                  ? `Challenge language: ${challengeLangRaw}. Pick a runnable language to execute.`
+                  : 'No challenge language specified. Pick a runnable language to execute.';
+              } else {
+                note = 'Notes mode: no runner available.';
+              }
+            } else {
+              note = 'Input is passed to solve(input). Return a value or use print()/console.log() to show output.';
+            }
+            runnerNote.textContent = note;
           }
           if (isScratch) {
             out.textContent = 'Use this editor to draft solutions in any language and compare with the solution.';
@@ -243,14 +354,29 @@ This mode does not execute code.`
         langSel.addEventListener('change', applyMode);
 
         runBtn.addEventListener('click', async () => {
-          if (langSel.value === 'txt') return;
+          const lang = activeLangKey();
+          if (lang === 'txt') return;
           out.textContent = 'Running...';
-          const sampleInput = 'hello';
-          let result = (langSel.value === 'js')
-            ? await runJsSandbox(code.value, sampleInput)
-            : await runPy(code.value, sampleInput);
+          const sampleInput = inputEl ? inputEl.value : '';
+          let result;
+          if (lang === 'js') {
+            result = await runJsSandbox(code.value, sampleInput);
+          } else if (lang === 'ts') {
+            result = await runTs(code.value, sampleInput);
+          } else {
+            result = await runPy(code.value, sampleInput);
+          }
 
-          out.textContent = result.out || (result.ok ? '(no output)' : 'Error with no message');
+          let outputText = result.out || '';
+          if (!outputText) {
+            outputText = result.ok
+              ? 'No output. Return a value from solve(input) or use print()/console.log().'
+              : 'Error with no message';
+          }
+          if (!result.ok && outputText.includes('Execution timed out')) {
+            outputText = 'Execution timed out (5s). Check for infinite loops or heavy work.';
+          }
+          out.textContent = outputText;
           out.className = 'card ' + (result.ok ? 'ok' : 'err');
         });
       });
