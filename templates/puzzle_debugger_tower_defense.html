@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  .td-wrapper { display: flex; flex-direction: column; gap: 16px; }
+  .td-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+    gap: 16px;
+  }
+  .td-panel { display: flex; flex-direction: column; gap: 12px; }
+  .td-canvas {
+    width: 100%;
+    max-width: 820px;
+    background: radial-gradient(circle at top, rgba(20,34,56,0.9), rgba(5,8,14,0.95));
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+  .td-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .td-actions button { padding: 8px 12px; border-radius: 10px; background: #2c6cf4; color: #fff; }
+  .td-actions button.secondary { background: rgba(255,255,255,0.14); }
+  .td-panel small { color: #b8c8d6; }
+
+  @media (max-width: 860px) {
+    .td-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="glass puzzle-shell">
+  <a href="{{ url_for('puzzles_hub') }}">&larr; Back to Puzzle Arcade</a>
+  <div class="td-wrapper">
+    <div>
+      <h2 style="margin-top: 6px;">Debugger Tower Defense (Prototype)</h2>
+      <p>Place debugger towers to stop incoming bugs. The gameplay loop runs entirely on the client; save your progress to the server when you're ready.</p>
+    </div>
+
+    <div class="td-grid">
+      <div>
+        <canvas id="td-canvas" class="td-canvas" width="820" height="460"></canvas>
+      </div>
+      <div class="td-panel">
+        <div class="stats">
+          <div class="stat">Wave: <strong id="td-wave">1</strong></div>
+          <div class="stat">Credits: <strong id="td-credits">0</strong></div>
+          <div class="stat">Lives: <strong id="td-lives">0</strong></div>
+          <div class="stat">Bugs Resolved: <strong id="td-kills">0</strong></div>
+        </div>
+        <div class="card">
+          <h4 style="margin-top: 0;">Tower: Breakpoint Snare</h4>
+          <p>Click the grid to place a tower (cost: 25 credits). Each tower slows and damages bugs in range.</p>
+          <small>Tip: Avoid placing towers on the highlighted path.</small>
+        </div>
+        <div class="td-actions">
+          <button id="td-start">Start Wave</button>
+          <button id="td-save" class="secondary">Save Progress</button>
+          <button id="td-reset" class="secondary">Reset Run</button>
+        </div>
+        <small id="td-status">Status: Awaiting orders.</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.DEBUGGER_TD_BOOT = {
+    savedState: {{ saved_state|tojson }},
+    saveUrl: "{{ url_for('debugger_td_state_save') }}",
+    loadUrl: "{{ url_for('debugger_td_state') }}",
+    completeUrl: "{{ url_for('complete_puzzle') }}",
+    puzzleName: "debugger_tower_defense_prototype",
+  };
+</script>
+<script src="{{ url_for('static', filename='js/puzzle_debugger_tower_defense.js') }}"></script>
+{% endblock %}

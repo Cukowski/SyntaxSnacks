@@ -191,6 +191,12 @@ class PuzzleCompletion(db.Model):
     completed_at = db.Column(db.DateTime, default=datetime.utcnow)
     __table_args__ = (db.UniqueConstraint('user_id', 'puzzle_name'),)
 
+class DebuggerTowerDefenseState(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False, unique=True)
+    state = db.Column(db.JSON, nullable=False, default=dict)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
 
 class AuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -482,7 +488,7 @@ def dungeon_view(dungeon_id):
 
 # ---- Puzzles & Mini-Games
 # Registered via puzzles.routes to keep app.py lean.
-register_puzzle_routes(app, db, PuzzleCompletion)
+register_puzzle_routes(app, db, PuzzleCompletion, DebuggerTowerDefenseState)
 
 # ---- Admin: Users
 def _guard_admin():

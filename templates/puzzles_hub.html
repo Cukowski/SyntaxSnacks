@@ -61,6 +61,17 @@
         </div>
       </a>
     </div>
+
+    <!-- Debugger Tower Defense Prototype -->
+    <div class="dungeon-island {{ 'cleared' if 'debugger_tower_defense_prototype' in completed_puzzles else '' }}">
+      <a href="{{ url_for('puzzle_debugger_tower_defense') }}" class="island-link">
+        <div class="island-content">
+          <h4>Debugger Tower Defense</h4>
+          <p>Prototype a tower defense loop in the browser. Place towers, stop bugs, and save your run to the server.</p>
+          <div class="island-status">{{ '✅ Completed' if 'debugger_tower_defense_prototype' in completed_puzzles else '+5 XP Reward' }}</div>
+        </div>
+      </a>
+    </div>
   </div>
 </div>
 {% endblock %}

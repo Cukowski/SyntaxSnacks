@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import abort, render_template, request
 from flask_login import current_user, login_required
 
@@ -11,7 +13,7 @@ from .data import (
 )
 
 
-def register_puzzle_routes(app, db, PuzzleCompletion):
+def register_puzzle_routes(app, db, PuzzleCompletion, DebuggerTowerDefenseState):
     """Attach puzzle routes to the Flask app to keep app.py lean."""
 
     def _completed_set():
@@ -86,6 +88,50 @@ def register_puzzle_routes(app, db, PuzzleCompletion):
             GIT_REBASE_RESCUE_LEVELS, level_num, "git_rebase_rescue"
         )
         return render_template("puzzle_git_rebase_rescue.html", **level_data)
+
+    @app.route("/puzzles/debugger-tower-defense")
+    @login_required
+    def puzzle_debugger_tower_defense():
+        """Prototype tower defense puzzle with client-side loop."""
+        state = DebuggerTowerDefenseState.query.filter_by(
+            user_id=current_user.id
+        ).first()
+        return render_template(
+            "puzzle_debugger_tower_defense.html",
+            saved_state=state.state if state else None,
+        )
+
+    @app.route("/api/debugger-td/state", methods=["GET"])
+    @login_required
+    def debugger_td_state():
+        state = DebuggerTowerDefenseState.query.filter_by(
+            user_id=current_user.id
+        ).first()
+        if not state:
+            return {"state": None}, 200
+        return {"state": state.state, "updated_at": state.updated_at.isoformat()}, 200
+
+    @app.route("/api/debugger-td/state", methods=["POST"])
+    @login_required
+    def debugger_td_state_save():
+        data = request.get_json() or {}
+        state_payload = data.get("state")
+        if state_payload is None or not isinstance(state_payload, dict):
+            return {"error": "State payload is required."}, 400
+
+        state = DebuggerTowerDefenseState.query.filter_by(
+            user_id=current_user.id
+        ).first()
+        if not state:
+            state = DebuggerTowerDefenseState(
+                user_id=current_user.id, state=state_payload
+            )
+            db.session.add(state)
+        else:
+            state.state = state_payload
+        state.updated_at = datetime.utcnow()
+        db.session.commit()
+        return {"message": "State saved."}, 200
 
     @app.route("/puzzles/complete", methods=["POST"])
     @login_required
