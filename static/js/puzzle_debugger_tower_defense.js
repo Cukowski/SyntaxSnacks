@@ -11,6 +11,7 @@
     kills: document.getElementById("td-kills"),
     status: document.getElementById("td-status"),
     start: document.getElementById("td-start"),
+    sound: document.getElementById("td-sound"),
     save: document.getElementById("td-save"),
     reset: document.getElementById("td-reset"),
   };
@@ -32,6 +33,7 @@
   let spawnRemaining = 0;
   let spawnTimer = 0;
   let lastTime = performance.now();
+  let lastKillSound = 0;
 
   const gridSize = 40;
   const mapOffset = { x: 10, y: 10 };
@@ -39,6 +41,13 @@
   const mapHeight = 440;
   const pathWidth = 52;
   const towerCost = 25;
+  const towerRadius = 12;
+  const towerRange = 110;
+  const towerSpacing = 34;
+  const pathPadding = towerRadius + 6;
+
+  const gridColumns = Math.floor(mapWidth / gridSize);
+  const gridRows = Math.floor(mapHeight / gridSize);
 
   const pathPoints = [
     { x: mapOffset.x, y: mapOffset.y + 220 },
@@ -69,10 +78,10 @@
     return distance(point, projection);
   };
 
-  const isOnPath = (point) => {
+  const isOnPath = (point, padding = 0) => {
     for (let i = 0; i < pathPoints.length - 1; i += 1) {
       const d = pointToSegmentDistance(point, pathPoints[i], pathPoints[i + 1]);
-      if (d <= pathWidth / 2 - 4) {
+      if (d <= pathWidth / 2 + padding) {
         return true;
       }
     }
@@ -85,11 +94,65 @@
     }
   };
 
+  const sound = {
+    enabled: true,
+    ctx: null,
+    gain: null,
+  };
+
+  const ensureAudio = () => {
+    if (!sound.enabled) return false;
+    if (!sound.ctx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return false;
+      sound.ctx = new AudioContext();
+      sound.gain = sound.ctx.createGain();
+      sound.gain.gain.value = 0.08;
+      sound.gain.connect(sound.ctx.destination);
+    }
+    if (sound.ctx.state === "suspended") {
+      sound.ctx.resume();
+    }
+    return true;
+  };
+
+  const playTone = (frequency, duration = 0.08, type = "sine", level = 0.6, delay = 0) => {
+    if (!ensureAudio()) return;
+    const ctx = sound.ctx;
+    const start = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const amp = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, start);
+    amp.gain.setValueAtTime(0, start);
+    amp.gain.linearRampToValueAtTime(level, start + 0.01);
+    amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(amp);
+    amp.connect(sound.gain);
+    osc.start(start);
+    osc.stop(start + duration + 0.02);
+  };
+
+  const playSequence = (notes) => {
+    let offset = 0;
+    notes.forEach((note) => {
+      playTone(note.freq, note.duration, note.type, note.level, offset);
+      offset += note.duration + (note.gap || 0.03);
+    });
+  };
+
   const syncUI = () => {
     if (ui.wave) ui.wave.textContent = state.wave;
     if (ui.credits) ui.credits.textContent = state.credits;
     if (ui.lives) ui.lives.textContent = state.lives;
     if (ui.kills) ui.kills.textContent = state.kills;
+    if (ui.start) {
+      ui.start.disabled = waveInProgress || state.lives <= 0;
+      ui.start.textContent = waveInProgress ? "Wave Running..." : "Start Wave";
+    }
+    if (ui.sound) {
+      ui.sound.textContent = sound.enabled ? "Sound: On" : "Sound: Off";
+    }
   };
 
   const serializeState = () => ({
@@ -123,6 +186,10 @@
     spawnRemaining = 5 + state.wave * 2;
     spawnTimer = 0;
     formatStatus(`Wave ${state.wave} engaged.`);
+    playSequence([
+      { freq: 320, duration: 0.08, type: "triangle", level: 0.5 },
+      { freq: 520, duration: 0.1, type: "triangle", level: 0.5, gap: 0.02 },
+    ]);
   };
 
   const completeWave = () => {
@@ -131,6 +198,10 @@
     state.highWave = Math.max(state.highWave, state.wave);
     state.credits += 30 + state.wave * 4;
     formatStatus(`Wave cleared. Prep for wave ${state.wave}.`);
+    playSequence([
+      { freq: 440, duration: 0.12, type: "sine", level: 0.5 },
+      { freq: 660, duration: 0.14, type: "sine", level: 0.5, gap: 0.02 },
+    ]);
     if (state.wave >= 3 && !state.awardedXp) {
       awardXp();
       state.awardedXp = true;
@@ -229,7 +300,7 @@
     state.towers.forEach((tower) => {
       ctx.fillStyle = "rgba(76, 233, 203, 0.9)";
       ctx.beginPath();
-      ctx.arc(tower.x, tower.y, 12, 0, Math.PI * 2);
+      ctx.arc(tower.x, tower.y, towerRadius, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.strokeStyle = "rgba(76, 233, 203, 0.2)";
@@ -300,11 +371,16 @@
     if (escaped.length) {
       state.lives = Math.max(0, state.lives - escaped.length);
       formatStatus("Bugs breached! Patch the leak.");
+      playTone(140, 0.12, "sawtooth", 0.5);
     }
     bugs = bugs.filter((bug) => !bug.reachedEnd && bug.health > 0);
     if (state.lives <= 0) {
       waveInProgress = false;
       formatStatus("System compromised. Reset to try again.");
+      playSequence([
+        { freq: 220, duration: 0.12, type: "square", level: 0.5 },
+        { freq: 140, duration: 0.2, type: "square", level: 0.5, gap: 0.02 },
+      ]);
     }
   };
 
@@ -325,6 +401,11 @@
       if (target.health <= 0) {
         state.kills += 1;
         state.credits += 6;
+        const now = performance.now();
+        if (now - lastKillSound > 90) {
+          playTone(760, 0.04, "triangle", 0.35);
+          lastKillSound = now;
+        }
       }
     });
   };
@@ -349,10 +430,38 @@
     }
   };
 
+  let hoverCell = null;
+
+  const drawHover = () => {
+    if (!hoverCell) return;
+    const preview = canPlaceTower(hoverCell);
+    const valid = preview.ok;
+    ctx.fillStyle = valid ? "rgba(76, 233, 203, 0.18)" : "rgba(255, 107, 107, 0.2)";
+    ctx.fillRect(
+      hoverCell.x - gridSize / 2,
+      hoverCell.y - gridSize / 2,
+      gridSize,
+      gridSize
+    );
+
+    ctx.strokeStyle = valid ? "rgba(76, 233, 203, 0.6)" : "rgba(255, 107, 107, 0.6)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(hoverCell.x, hoverCell.y, towerRadius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(76, 233, 203, 0.15)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(hoverCell.x, hoverCell.y, towerRange, 0, Math.PI * 2);
+    ctx.stroke();
+  };
+
   const render = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawPath();
     drawGrid();
+    drawHover();
     drawTowers();
     drawBugs();
     drawShots();
@@ -370,41 +479,97 @@
     requestAnimationFrame(tick);
   };
 
-  const placeTower = (event) => {
+  const getPointerPosition = (event) => {
     const rect = canvas.getBoundingClientRect();
-    const x = clamp(event.clientX - rect.left, mapOffset.x, mapOffset.x + mapWidth);
-    const y = clamp(event.clientY - rect.top, mapOffset.y, mapOffset.y + mapHeight);
-    const snapped = {
-      x: mapOffset.x + Math.round((x - mapOffset.x) / gridSize) * gridSize,
-      y: mapOffset.y + Math.round((y - mapOffset.y) / gridSize) * gridSize,
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: (event.clientX - rect.left) * scaleX,
+      y: (event.clientY - rect.top) * scaleY,
     };
+  };
 
-    if (isOnPath(snapped)) {
-      formatStatus("That tile is reserved for bug traffic.");
-      return;
+  const snapToGrid = (position) => {
+    const rawCol = Math.floor((position.x - mapOffset.x) / gridSize);
+    const rawRow = Math.floor((position.y - mapOffset.y) / gridSize);
+    const col = clamp(rawCol, 0, gridColumns - 1);
+    const row = clamp(rawRow, 0, gridRows - 1);
+    return {
+      x: mapOffset.x + col * gridSize + gridSize / 2,
+      y: mapOffset.y + row * gridSize + gridSize / 2,
+    };
+  };
+
+  const canPlaceTower = (point) => {
+    if (isOnPath(point, pathPadding)) {
+      return { ok: false, reason: "That tile is reserved for bug traffic." };
     }
     if (state.credits < towerCost) {
-      formatStatus("Insufficient credits for deployment.");
-      return;
+      return { ok: false, reason: "Insufficient credits for deployment." };
     }
-    if (state.towers.some((tower) => distance(tower, snapped) < 30)) {
-      formatStatus("Tower spacing too tight.");
+    if (state.towers.some((tower) => distance(tower, point) < towerSpacing)) {
+      return { ok: false, reason: "Tower spacing too tight." };
+    }
+    return { ok: true };
+  };
+
+  const placeTower = (event) => {
+    const pointer = getPointerPosition(event);
+    const snapped = snapToGrid({
+      x: clamp(pointer.x, mapOffset.x, mapOffset.x + mapWidth),
+      y: clamp(pointer.y, mapOffset.y, mapOffset.y + mapHeight),
+    });
+
+    const placement = canPlaceTower(snapped);
+    if (!placement.ok) {
+      if (placement.reason) formatStatus(placement.reason);
+      playTone(180, 0.08, "sawtooth", 0.4);
       return;
     }
     state.credits -= towerCost;
     state.towers.push({
       x: snapped.x,
       y: snapped.y,
-      range: 110,
+      range: towerRange,
       fireRate: 0.45,
       damage: 12,
       cooldown: 0,
     });
     formatStatus("Tower deployed.");
+    playSequence([
+      { freq: 460, duration: 0.07, type: "triangle", level: 0.45 },
+      { freq: 620, duration: 0.09, type: "triangle", level: 0.45, gap: 0.02 },
+    ]);
   };
 
   canvas.addEventListener("click", placeTower);
+  canvas.addEventListener("mousemove", (event) => {
+    const pointer = getPointerPosition(event);
+    if (
+      pointer.x < mapOffset.x ||
+      pointer.x > mapOffset.x + mapWidth ||
+      pointer.y < mapOffset.y ||
+      pointer.y > mapOffset.y + mapHeight
+    ) {
+      hoverCell = null;
+      return;
+    }
+    hoverCell = snapToGrid(pointer);
+  });
+  canvas.addEventListener("mouseleave", () => {
+    hoverCell = null;
+  });
   if (ui.start) ui.start.addEventListener("click", startWave);
+  if (ui.sound) {
+    ui.sound.addEventListener("click", () => {
+      sound.enabled = !sound.enabled;
+      if (sound.enabled) {
+        ensureAudio();
+        playTone(520, 0.08, "triangle", 0.4);
+      }
+      syncUI();
+    });
+  }
   if (ui.save) ui.save.addEventListener("click", saveState);
   if (ui.reset) ui.reset.addEventListener("click", resetRun);
 
