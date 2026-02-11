@@ -1,17 +1,29 @@
+import os
+import tempfile
 import unittest
+
 from app import app, db, Joke
 
 class AppTestCase(unittest.TestCase):
     def setUp(self):
+        self.db_fd, self.db_path = tempfile.mkstemp()
+        app.config.update(
+            TESTING=True,
+            SQLALCHEMY_DATABASE_URI=f"sqlite:///{self.db_path}",
+        )
         self.app = app.test_client()
         self.app_context = app.app_context()
         self.app_context.push()
+        db.session.remove()
+        db.drop_all()
         db.create_all()
 
     def tearDown(self):
         db.session.remove()
         db.drop_all()
         self.app_context.pop()
+        os.close(self.db_fd)
+        os.unlink(self.db_path)
 
     def test_random_fun_with_jokes_in_db(self):
         # Add a joke to the database

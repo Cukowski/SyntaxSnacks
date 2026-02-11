@@ -1,13 +1,23 @@
+import os
+import tempfile
 import unittest
+
 from app import app, db, User, Message
 from werkzeug.security import generate_password_hash
 
 class ContactFormTest(unittest.TestCase):
     def setUp(self):
-        app.config['TESTING'] = True
-        app.config['WTF_CSRF_ENABLED'] = False
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+        self.db_fd, self.db_path = tempfile.mkstemp()
+        app.config.update(
+            TESTING=True,
+            WTF_CSRF_ENABLED=False,
+            SQLALCHEMY_DATABASE_URI=f"sqlite:///{self.db_path}",
+        )
         self.app = app.test_client()
+        self.app_context = app.app_context()
+        self.app_context.push()
+        db.session.remove()
+        db.drop_all()
         db.create_all()
 
         # Create a user
@@ -18,6 +28,9 @@ class ContactFormTest(unittest.TestCase):
     def tearDown(self):
         db.session.remove()
         db.drop_all()
+        self.app_context.pop()
+        os.close(self.db_fd)
+        os.unlink(self.db_path)
 
     def login(self, username, password):
         return self.app.post('/login', data=dict(

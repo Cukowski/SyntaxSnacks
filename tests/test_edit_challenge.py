@@ -1,11 +1,21 @@
+import os
+import tempfile
 import unittest
+
 from app import app, db, Challenge, User
 
 class AdminEditChallengeTestCase(unittest.TestCase):
     def setUp(self):
+        self.db_fd, self.db_path = tempfile.mkstemp()
+        app.config.update(
+            TESTING=True,
+            SQLALCHEMY_DATABASE_URI=f"sqlite:///{self.db_path}",
+        )
         self.app = app.test_client()
         self.app_context = app.app_context()
         self.app_context.push()
+        db.session.remove()
+        db.drop_all()
         db.create_all()
 
         # Create a test user and log in
@@ -22,6 +32,8 @@ class AdminEditChallengeTestCase(unittest.TestCase):
         db.session.remove()
         db.drop_all()
         self.app_context.pop()
+        os.close(self.db_fd)
+        os.unlink(self.db_path)
 
     def test_edit_challenge(self):
         # Create a challenge
