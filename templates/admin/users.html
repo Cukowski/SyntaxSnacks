@@ -35,6 +35,7 @@
             <th>Email</th>
             <th>Role</th>
             <th>Status</th>
+            <th>Leaderboard</th>
             <th>XP</th>
             <th>Streak</th>
             <th>Last Login</th>
@@ -50,6 +51,7 @@
             <td class="user-email" title="{{ u.email or '' }}"><span class="truncate">{{ email[:22] ~ ('...' if email|length > 22 else '') }}</span></td>
             <td>{{ 'Admin' if u.is_admin else 'User' }}</td>
             <td>{{ 'Active' if u.active else 'Inactive' }}</td>
+            <td>{{ 'Visible' if u.show_on_leaderboard else 'Hidden' }}</td>
             <td>{{ u.xp }}</td>
             <td>{{ u.streak }}</td>
             <td>{{ u.last_login.strftime('%Y-%m-%d %H:%M') if u.last_login else 'Never' }}</td>

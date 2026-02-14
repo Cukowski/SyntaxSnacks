@@ -95,6 +95,43 @@ class AdminUserManagementTestCase(unittest.TestCase):
         self.assertEqual(log.meta.get("reason"), "bonus fix")
         self.assertEqual(log.meta.get("delta_xp"), 15)
 
+    def test_admin_can_update_username_and_hide_from_leaderboard(self):
+        self.login_admin()
+        resp = self.client.post(
+            f"/admin/users/{self.user_id}/update_profile",
+            data={"username": "player-renamed"},
+            follow_redirects=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        user = db.session.get(User, self.user_id)
+        self.assertEqual(user.username, "player-renamed")
+        self.assertFalse(user.show_on_leaderboard)
+        log = AuditLog.query.filter_by(
+            target_user_id=self.user_id, action="update_profile"
+        ).first()
+        self.assertIsNotNone(log)
+        self.assertEqual(log.meta.get("new_username"), "player-renamed")
+        self.assertFalse(log.meta.get("new_show_on_leaderboard"))
+
+    def test_leaderboard_hides_users_with_visibility_off(self):
+        hidden_user = db.session.get(User, self.user_id)
+        hidden_user.xp = 500
+        hidden_user.show_on_leaderboard = False
+        visible_user = User(
+            username="visible",
+            email="visible@example.com",
+            password_hash=generate_password_hash("pw"),
+            xp=100,
+            show_on_leaderboard=True,
+        )
+        db.session.add(visible_user)
+        db.session.commit()
+
+        resp = self.client.get("/leaderboard")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"visible", resp.data)
+        self.assertNotIn(b"player", resp.data)
+
 
 if __name__ == "__main__":
     unittest.main()

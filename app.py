@@ -136,6 +136,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True)
     password_hash = db.Column(db.String(200))
     active = db.Column(db.Boolean, default=True, nullable=False)
+    show_on_leaderboard = db.Column(db.Boolean, default=True, nullable=False)
     xp = db.Column(db.Integer, default=0)
     streak = db.Column(db.Integer, default=0)
     last_login = db.Column(db.DateTime, nullable=True)
@@ -414,7 +415,13 @@ def submit_challenge(challenge_id):
 
 @app.route("/leaderboard")
 def leaderboard():
-    users = User.query.order_by(User.xp.desc(), User.streak.desc()).limit(50).all()
+    users = (
+        User.query
+        .filter(User.show_on_leaderboard.is_(True))
+        .order_by(User.xp.desc(), User.streak.desc())
+        .limit(50)
+        .all()
+    )
     return render_template("leaderboard.html", users=users)
 
 # ---- Dungeons & Exploration
@@ -740,6 +747,48 @@ def admin_adjust_user_stats(user_id):
     )
     db.session.commit()
     flash("Stats updated.")
+    return redirect(url_for("admin_user_detail", user_id=user.id))
+
+@app.post("/admin/users/<int:user_id>/update_profile")
+@login_required
+def admin_update_user_profile(user_id):
+    _guard_admin()
+    user = User.query.get_or_404(user_id)
+    new_username = (request.form.get("username") or "").strip()
+    show_on_leaderboard = request.form.get("show_on_leaderboard") == "on"
+
+    if not new_username:
+        flash("Username cannot be empty.")
+        return redirect(url_for("admin_user_detail", user_id=user.id))
+    if len(new_username) > 80:
+        flash("Username cannot exceed 80 characters.")
+        return redirect(url_for("admin_user_detail", user_id=user.id))
+
+    existing = (
+        User.query.filter(func.lower(User.username) == new_username.lower(), User.id != user.id)
+        .first()
+    )
+    if existing:
+        flash("That username is already in use.")
+        return redirect(url_for("admin_user_detail", user_id=user.id))
+
+    old_username = user.username
+    old_visibility = bool(user.show_on_leaderboard)
+    user.username = new_username
+    user.show_on_leaderboard = show_on_leaderboard
+    add_audit_log(
+        current_user.id,
+        user.id,
+        "update_profile",
+        {
+            "old_username": old_username,
+            "new_username": user.username,
+            "old_show_on_leaderboard": old_visibility,
+            "new_show_on_leaderboard": bool(user.show_on_leaderboard),
+        },
+    )
+    db.session.commit()
+    flash(f"Updated profile settings for {user.username}.")
     return redirect(url_for("admin_user_detail", user_id=user.id))
 
 
@@ -1360,6 +1409,11 @@ def _ensure_user_schema():
         }
         if "active" not in cols:
             conn.exec_driver_sql("ALTER TABLE user ADD COLUMN active BOOLEAN DEFAULT 1")
+        if "show_on_leaderboard" not in cols:
+            conn.exec_driver_sql("ALTER TABLE user ADD COLUMN show_on_leaderboard BOOLEAN DEFAULT 1")
+            conn.exec_driver_sql(
+                "UPDATE user SET show_on_leaderboard = 1 WHERE show_on_leaderboard IS NULL"
+            )
         if "last_login" not in cols:
             conn.exec_driver_sql("ALTER TABLE user ADD COLUMN last_login DATETIME")
         if "created_at" not in cols:
